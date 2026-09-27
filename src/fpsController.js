@@ -1,5 +1,4 @@
 import * as THREE from 'three';
-import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls.js';
 
 export class FPSController {
   constructor(camera, domElement, colliders, rooms) {
@@ -7,8 +6,6 @@ export class FPSController {
     this.domElement = domElement;
     this.colliders = colliders || [];
     this.rooms = rooms || [];
-
-    this.controls = new PointerLockControls(camera, domElement);
     this.enabled = true;
 
     // Movement state
@@ -20,12 +17,16 @@ export class FPSController {
     this.turnRight = false;
     this.isSprinting = false;
 
+    // Persistent orientation scalars (in radians) - eliminates gimbal lock
+    this.yaw = 0;
+    this.pitch = 0;
+    this.mouseSensitivity = 0.0028;
+
     // Physics & speeds
     this.walkSpeed = 4.2; // m/s
     this.sprintSpeed = 6.8; // m/s
     this.velocity = new THREE.Vector3();
-    this.direction = new THREE.Vector3();
-    this.playerRadius = 0.22; // slim clearance radius for easy door passage
+    this.playerRadius = 0.16; // slim clearance radius for smooth door passage without snagging
     this.eyeHeight = 1.65; // realistic standing eye level
 
     // Head bobbing
@@ -37,11 +38,11 @@ export class FPSController {
     this.onStep = null;
     this.lastStepDist = 0;
 
-    // Drag-to-look when pointer is not locked
+    // Mouse drag-to-look / pointer lock state
     this.isMouseDown = false;
     this.prevMouseX = 0;
     this.prevMouseY = 0;
-    this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
+    this.isLocked = false;
 
     // Mobile Touch & Swipe control state (decoupled multi-touch)
     this.touchLookId = null;
@@ -56,6 +57,22 @@ export class FPSController {
     this.joystickKnob = null;
 
     this.setupListeners();
+    this.syncFromCamera();
+  }
+
+  applyOrientation() {
+    this.camera.quaternion.setFromEuler(new THREE.Euler(this.pitch, this.yaw, 0, 'YXZ'));
+  }
+
+  syncFromCamera() {
+    const dir = new THREE.Vector3();
+    this.camera.getWorldDirection(dir);
+    if (dir.lengthSq() > 0.0001) {
+      dir.normalize();
+      this.pitch = Math.asin(Math.max(-0.999, Math.min(0.999, dir.y)));
+      this.yaw = Math.atan2(-dir.x, -dir.z);
+      this.applyOrientation();
+    }
   }
 
   setupListeners() {
@@ -76,17 +93,10 @@ export class FPSController {
       if (code === 'KeyD' || key === 'd') {
         this.moveRight = true;
       }
-      // Arrow keys turn left/right for seamless steering while walking forward
-      if (code === 'ArrowLeft' || key === 'arrowleft') {
+      if (code === 'ArrowLeft' || key === 'arrowleft' || code === 'KeyQ' || key === 'q') {
         this.turnLeft = true;
       }
-      if (code === 'ArrowRight' || key === 'arrowright') {
-        this.turnRight = true;
-      }
-      if (code === 'KeyQ' || key === 'q') {
-        this.turnLeft = true;
-      }
-      if (code === 'KeyE' || key === 'e') {
+      if (code === 'ArrowRight' || key === 'arrowright' || code === 'KeyE' || key === 'e') {
         this.turnRight = true;
       }
       if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') {
@@ -110,16 +120,10 @@ export class FPSController {
       if (code === 'KeyD' || key === 'd') {
         this.moveRight = false;
       }
-      if (code === 'ArrowLeft' || key === 'arrowleft') {
+      if (code === 'ArrowLeft' || key === 'arrowleft' || code === 'KeyQ' || key === 'q') {
         this.turnLeft = false;
       }
-      if (code === 'ArrowRight' || key === 'arrowright') {
-        this.turnRight = false;
-      }
-      if (code === 'KeyQ' || key === 'q') {
-        this.turnLeft = false;
-      }
-      if (code === 'KeyE' || key === 'e') {
+      if (code === 'ArrowRight' || key === 'arrowright' || code === 'KeyE' || key === 'e') {
         this.turnRight = false;
       }
       if (code === 'ShiftLeft' || code === 'ShiftRight' || key === 'shift') {
@@ -143,15 +147,24 @@ export class FPSController {
       this.updateJoystickUI(0, 0);
     };
 
-    // Canvas click to lock pointer if desktop user wants standard pointer lock
+    this.onBlur = () => {
+      // Don't wipe inputs if we just engaged pointer lock on our canvas
+      if (document.pointerLockElement === this.domElement) return;
+      this.resetInputs();
+    };
+
     this.onCanvasClick = (e) => {
       if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
       const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      if (this.enabled && !isTouch && !this.controls.isLocked) {
+      if (this.enabled && !isTouch && !this.isLocked) {
         this.lock();
       }
+    };
+
+    this.onPointerLockChange = () => {
+      this.isLocked = (document.pointerLockElement === this.domElement);
     };
 
     // Mouse drag-to-look (left-click, middle-click, or right-click)
@@ -163,25 +176,30 @@ export class FPSController {
       this.isMouseDown = true;
       this.prevMouseX = e.clientX;
       this.prevMouseY = e.clientY;
-      this.euler.setFromQuaternion(this.camera.quaternion);
     };
 
     this.onMouseMove = (e) => {
       if (!this.enabled) return;
 
       const isDragging = this.isMouseDown || ((e.buttons & 1) || (e.buttons & 2) || (e.buttons & 4));
-      // When pointer is NOT locked, allow clicking and dragging anywhere to rotate view
-      if (!this.controls.isLocked && isDragging) {
-        const deltaX = e.clientX - this.prevMouseX;
-        const deltaY = e.clientY - this.prevMouseY;
-        this.prevMouseX = e.clientX;
-        this.prevMouseY = e.clientY;
+      if (this.isLocked || isDragging) {
+        let deltaX = 0;
+        let deltaY = 0;
 
-        this.euler.setFromQuaternion(this.camera.quaternion);
-        this.euler.y -= deltaX * 0.0035;
-        this.euler.x -= deltaY * 0.0035;
-        this.euler.x = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, this.euler.x));
-        this.camera.quaternion.setFromEuler(this.euler);
+        if (this.isLocked) {
+          deltaX = e.movementX || 0;
+          deltaY = e.movementY || 0;
+        } else {
+          deltaX = e.clientX - this.prevMouseX;
+          deltaY = e.clientY - this.prevMouseY;
+          this.prevMouseX = e.clientX;
+          this.prevMouseY = e.clientY;
+        }
+
+        this.yaw -= deltaX * this.mouseSensitivity;
+        this.pitch -= deltaY * this.mouseSensitivity;
+        this.pitch = Math.max(-1.46, Math.min(1.46, this.pitch));
+        this.applyOrientation();
       }
     };
 
@@ -205,7 +223,6 @@ export class FPSController {
         const touch = e.changedTouches[i];
         const target = touch.target;
 
-        // Don't capture touches on HUD toolbar, minimap, room pills, or dialogs
         if (target.closest('#hud-toolbar') || target.closest('#minimap-wrapper') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
           continue;
         }
@@ -213,17 +230,14 @@ export class FPSController {
         const isJoystick = !!target.closest('#virtual-joystick');
 
         if (isJoystick && this.touchMoveId === null) {
-          // Touching on the virtual joystick pad -> walk / strafe
           this.touchMoveId = touch.identifier;
           this.touchMoveOriginX = touch.clientX;
           this.touchMoveOriginY = touch.clientY;
           this.updateJoystickUI(0, 0);
         } else if (!isJoystick && this.touchLookId === null) {
-          // Touching anywhere else on the screen -> SWIPE TO LOOK AROUND
           this.touchLookId = touch.identifier;
           this.touchLookPrevX = touch.clientX;
           this.touchLookPrevY = touch.clientY;
-          this.euler.setFromQuaternion(this.camera.quaternion);
         }
       }
     };
@@ -235,24 +249,19 @@ export class FPSController {
         const touch = e.changedTouches[i];
 
         if (touch.identifier === this.touchLookId) {
-          // Swipe to rotate / pan camera view
           const deltaX = touch.clientX - this.touchLookPrevX;
           const deltaY = touch.clientY - this.touchLookPrevY;
           this.touchLookPrevX = touch.clientX;
           this.touchLookPrevY = touch.clientY;
 
-          this.euler.setFromQuaternion(this.camera.quaternion);
-          // Horizontal swipe rotates yaw
-          this.euler.y -= deltaX * 0.0050;
-          // Vertical swipe tilts pitch
-          this.euler.x -= deltaY * 0.0040;
-          this.euler.x = Math.max(-Math.PI / 2 + 0.12, Math.min(Math.PI / 2 - 0.12, this.euler.x));
-          this.camera.quaternion.setFromEuler(this.euler);
+          this.yaw -= deltaX * 0.0050;
+          this.pitch -= deltaY * 0.0040;
+          this.pitch = Math.max(-1.46, Math.min(1.46, this.pitch));
+          this.applyOrientation();
         } else if (touch.identifier === this.touchMoveId) {
-          // Virtual joystick move
           const dx = touch.clientX - this.touchMoveOriginX;
           const dy = touch.clientY - this.touchMoveOriginY;
-          const maxRadius = 45; // max stick distance in pixels
+          const maxRadius = 45;
           const dist = Math.hypot(dx, dy);
           const clampedDist = Math.min(dist, maxRadius);
           const angle = Math.atan2(dy, dx);
@@ -261,9 +270,8 @@ export class FPSController {
           const knobY = Math.sin(angle) * clampedDist;
           this.updateJoystickUI(knobX, knobY);
 
-          // Normalize values
           this.inputStrafe = knobX / maxRadius;
-          this.inputForward = -knobY / maxRadius; // Upward drag moves forward
+          this.inputForward = -knobY / maxRadius;
         }
       }
     };
@@ -285,8 +293,9 @@ export class FPSController {
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
-    window.addEventListener('blur', this.resetInputs);
+    window.addEventListener('blur', this.onBlur);
     this.domElement.addEventListener('click', this.onCanvasClick);
+    document.addEventListener('pointerlockchange', this.onPointerLockChange);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mouseup', this.onMouseUp);
@@ -309,16 +318,15 @@ export class FPSController {
   }
 
   quickTurn(angleRadians) {
-    this.euler.setFromQuaternion(this.camera.quaternion);
-    this.euler.y += angleRadians;
-    this.camera.quaternion.setFromEuler(this.euler);
+    this.yaw += angleRadians;
+    this.applyOrientation();
   }
 
   lock() {
     const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     if (!isTouch) {
       try {
-        this.controls.lock();
+        this.domElement.requestPointerLock();
       } catch (err) {
         console.warn('PointerLock not available:', err);
       }
@@ -327,41 +335,35 @@ export class FPSController {
 
   unlock() {
     try {
-      this.controls.unlock();
+      if (document.exitPointerLock && document.pointerLockElement === this.domElement) {
+        document.exitPointerLock();
+      }
     } catch {
       // safe fallback
     }
-  }
-
-  isLocked() {
-    return this.controls.isLocked;
+    this.isLocked = false;
   }
 
   teleportTo(x, z, rotY = null) {
     this.camera.position.set(x, this.eyeHeight, z);
     this.velocity.set(0, 0, 0);
-    this.moveForward = false;
-    this.moveBackward = false;
-    this.moveLeft = false;
-    this.moveRight = false;
+    this.resetInputs();
 
     if (rotY !== null) {
-      this.camera.rotation.set(0, rotY, 0);
-      this.euler.set(0, rotY, 0, 'YXZ');
+      this.yaw = rotY;
+      this.pitch = 0;
+      this.applyOrientation();
     }
   }
 
   checkCollision(testPos) {
     const r = this.playerRadius;
-    // Bounding cylinder check: only check vertical collision between 0.45m and eye level
-    // This allows stepping over small floor thresholds and stepping stones without snagging
     const pMin = new THREE.Vector3(testPos.x - r, 0.45, testPos.z - r);
     const pMax = new THREE.Vector3(testPos.x + r, this.eyeHeight + 0.1, testPos.z + r);
     const playerBox = new THREE.Box3(pMin, pMax);
 
     for (let i = 0; i < this.colliders.length; i++) {
       const box = this.colliders[i];
-      // Ignore colliders lower than knee height (e.g. floor borders, rugs, stones)
       if (box.max.y <= 0.45) continue;
 
       if (playerBox.intersectsBox(box)) {
@@ -391,7 +393,11 @@ export class FPSController {
   }
 
   getYaw() {
-    return this.camera.rotation.y;
+    return this.yaw;
+  }
+
+  getPitch() {
+    return this.pitch;
   }
 
   update(delta) {
@@ -399,21 +405,15 @@ export class FPSController {
       return;
     }
 
-    // Smooth keyboard turning (Q and E keys)
+    // Smooth keyboard turning (Q and E keys, ArrowLeft / ArrowRight)
     if (this.turnLeft || this.turnRight) {
       const turnSpeed = 2.4; // rad/s
       const turnVal = Number(this.turnRight) - Number(this.turnLeft);
-      this.euler.setFromQuaternion(this.camera.quaternion);
-      this.euler.y -= turnVal * turnSpeed * delta;
-      this.camera.quaternion.setFromEuler(this.euler);
+      this.yaw -= turnVal * turnSpeed * delta;
+      this.applyOrientation();
     }
 
     const currentSpeed = this.isSprinting ? this.sprintSpeed : this.walkSpeed;
-    const damping = 10.0;
-
-    // Deceleration
-    this.velocity.x -= this.velocity.x * damping * delta;
-    this.velocity.z -= this.velocity.z * damping * delta;
 
     // Direction calculation
     let fwdVal = Number(this.moveForward) - Number(this.moveBackward);
@@ -427,17 +427,12 @@ export class FPSController {
       sideVal = this.inputStrafe;
     }
 
-    // Forward direction on horizontal XZ plane
-    const forward = new THREE.Vector3();
-    this.camera.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
+    // Forward and Right vectors on horizontal XZ plane derived directly from scalar yaw
+    // (Never NaN, completely invariant to looking up/down!)
+    const forward = new THREE.Vector3(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    const right = new THREE.Vector3(Math.cos(this.yaw), 0, -Math.sin(this.yaw));
 
-    // Right direction on horizontal XZ plane
-    const right = new THREE.Vector3();
-    right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
-
-    const moveVector = new THREE.Vector3();
+    let moveVector = new THREE.Vector3();
     if (Math.abs(fwdVal) > 0.01) {
       moveVector.addScaledVector(forward, fwdVal);
     }
@@ -449,18 +444,24 @@ export class FPSController {
       if (moveVector.length() > 1.0) {
         moveVector.normalize();
       }
-      this.velocity.x += moveVector.x * currentSpeed * 12.0 * delta;
-      this.velocity.z += moveVector.z * currentSpeed * 12.0 * delta;
     }
 
-    // Attempt movement with wall-sliding collision & stuck recovery
+    // Snappy responsive velocity: instantly steers with the camera direction without sluggish momentum lag
+    const targetVelX = moveVector.x * currentSpeed;
+    const targetVelZ = moveVector.z * currentSpeed;
+    const responsiveness = 18.0;
+
+    this.velocity.x += (targetVelX - this.velocity.x) * Math.min(1.0, responsiveness * delta);
+    this.velocity.z += (targetVelZ - this.velocity.z) * Math.min(1.0, responsiveness * delta);
+
+    // Wall-sliding collision check
     const curPos = this.camera.position;
     const isCurrentlyStuck = this.checkCollision(curPos);
 
     const targetX = curPos.x + this.velocity.x * delta;
     const targetZ = curPos.z + this.velocity.z * delta;
 
-    // 1. Test X movement
+    // 1. Test X movement independently
     const testPosX = new THREE.Vector3(targetX, curPos.y, curPos.z);
     if (!this.checkCollision(testPosX) || isCurrentlyStuck) {
       curPos.x = targetX;
@@ -468,7 +469,7 @@ export class FPSController {
       this.velocity.x = 0;
     }
 
-    // 2. Test Z movement
+    // 2. Test Z movement independently
     const testPosZ = new THREE.Vector3(curPos.x, curPos.y, targetZ);
     if (!this.checkCollision(testPosZ) || isCurrentlyStuck) {
       curPos.z = targetZ;
@@ -497,8 +498,9 @@ export class FPSController {
   dispose() {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    window.removeEventListener('blur', this.resetInputs);
+    window.removeEventListener('blur', this.onBlur);
     this.domElement.removeEventListener('click', this.onCanvasClick);
+    document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mouseup', this.onMouseUp);
@@ -509,6 +511,5 @@ export class FPSController {
     window.removeEventListener('touchmove', this.onTouchMove);
     window.removeEventListener('touchend', this.onTouchEnd);
     window.removeEventListener('touchcancel', this.onTouchEnd);
-    this.controls.dispose();
   }
 }

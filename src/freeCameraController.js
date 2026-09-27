@@ -148,6 +148,11 @@ export class FreeCameraController {
       this.updateJoystickUI(0, 0);
     };
 
+    this.onBlur = () => {
+      if (document.pointerLockElement === this.domElement) return;
+      this.resetInputs();
+    };
+
     // Canvas click locks pointer for instant mouse look
     this.onCanvasClick = (e) => {
       if (!this.enabled) return;
@@ -301,7 +306,7 @@ export class FreeCameraController {
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
-    window.addEventListener('blur', this.resetInputs);
+    window.addEventListener('blur', this.onBlur);
     this.domElement.addEventListener('click', this.onCanvasClick);
     document.addEventListener('pointerlockchange', this.onPointerLockChange);
     window.addEventListener('mousedown', this.onMouseDown);
@@ -409,12 +414,6 @@ export class FreeCameraController {
     }
 
     const currentSpeed = this.isTurbo ? this.turboSpeed : this.normalSpeed;
-    const damping = 9.0;
-
-    // Deceleration
-    this.velocity.x -= this.velocity.x * damping * delta;
-    this.velocity.y -= this.velocity.y * damping * delta;
-    this.velocity.z -= this.velocity.z * damping * delta;
 
     // Translation directions
     let fwdVal = Number(this.moveForward) - Number(this.moveBackward);
@@ -451,8 +450,12 @@ export class FreeCameraController {
       if (moveVector.length() > 1.0) {
         moveVector.normalize();
       }
-      this.velocity.addScaledVector(moveVector, currentSpeed * 14.0 * delta);
     }
+
+    // Snappy responsive velocity: instantly steers with camera look direction without sluggish momentum lag
+    const targetVel = moveVector.multiplyScalar(currentSpeed);
+    const responsiveness = 16.0;
+    this.velocity.lerp(targetVel, Math.min(1.0, responsiveness * delta));
 
     // Apply 3D position update
     this.camera.position.addScaledVector(this.velocity, delta);
@@ -467,7 +470,7 @@ export class FreeCameraController {
   dispose() {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
-    window.removeEventListener('blur', this.resetInputs);
+    window.removeEventListener('blur', this.onBlur);
     this.domElement.removeEventListener('click', this.onCanvasClick);
     document.removeEventListener('pointerlockchange', this.onPointerLockChange);
     window.removeEventListener('mousedown', this.onMouseDown);
