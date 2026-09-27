@@ -11,7 +11,6 @@ import {
 import { buildFurniture } from './furnitureBuilder.js';
 import { buildKitchenSuite } from './kitchenBuilder.js';
 import { buildGamingRoom } from './gamingRoomBuilder.js';
-import { buildGardenRailing } from './gardenRailingBuilder.js';
 
 
 export function buildHouse(scene, houseData) {
@@ -158,6 +157,7 @@ export function buildHouse(scene, houseData) {
     });
 
     // Architectural Clear Roof Canopy and Downpipe for Covered Area (matching media_1790513327300.png)
+    // Architectural Smooth Roof Glass Canopy & Downpipe for Covered Area Walkway
     if (room.id === 'covered_area') {
       const canopyGroup = new THREE.Group();
       canopyGroup.name = "canopyGroup";
@@ -165,55 +165,150 @@ export function buildHouse(scene, houseData) {
       const gWidth = width;
       const gMidX = cx;
       const isCarportLeft = houseData.carportOnLeft;
+      const roofEdgeX = isCarportLeft ? b.minX : b.maxX;
+      const wallEdgeX = isCarportLeft ? b.maxX : b.minX;
 
-      // Canopy steel rafters across the 1.2m width (from Z = -0.8 down to -7.2)
-      const rafterMat = new THREE.MeshStandardMaterial({ color: 0x1f2328, roughness: 0.35, metalness: 0.8 });
-      const numRafters = 6;
+      // Smooth Satin Titanium / Dark Graphite Pergola Materials
+      const smoothRafterMat = new THREE.MeshStandardMaterial({
+        color: 0x282b30,
+        roughness: 0.22,
+        metalness: 0.88
+      });
+
+      // Architectural Tempered Roof Glass Material (Clear, subtle sky sheen)
+      const roofGlassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xedf6fc,
+        transparent: true,
+        opacity: 0.28,
+        roughness: 0.03,
+        transmission: 0.95,
+        ior: 1.52,
+        reflectivity: 0.95,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.03
+      });
+
+      const glassEdgeMat = new THREE.MeshStandardMaterial({
+        color: 0x9bc2dc,
+        roughness: 0.15,
+        metalness: 0.25,
+        transparent: true,
+        opacity: 0.55
+      });
+
+      // 7 Smooth Cylindrical Rafters across the 1.2m width (Z from -0.85 to -7.15)
+      const rafterZStart = -0.85;
+      const rafterZEnd = -7.15;
+      const totalRoofDepth = Math.abs(rafterZEnd - rafterZStart);
+      const numRafters = 7;
+      const rafterRadius = 0.022; // 44mm diameter smooth tubular rafter
+      const slopeAngle = 0.0365; // ~2.1 degrees gentle slope for water runoff
+
       for (let ri = 0; ri < numRafters; ri++) {
-        const rz = -1.0 - ri * 1.18;
         const t = ri / (numRafters - 1);
-        const ry = 3.05 - t * 0.25; // Gentle slope towards the rear wall
+        const rz = rafterZStart - t * totalRoofDepth;
+        const ry = 3.05 - t * 0.23; // Gentle slope down to rear
 
-        const rafter = new THREE.Mesh(new THREE.BoxGeometry(gWidth + 0.04, 0.05, 0.05), rafterMat);
+        // Smooth cylindrical rafter spanning across X
+        const rafterGeo = new THREE.CylinderGeometry(rafterRadius, rafterRadius, gWidth + 0.04, 32);
+        const rafter = new THREE.Mesh(rafterGeo, smoothRafterMat);
+        rafter.rotation.z = Math.PI / 2;
         rafter.position.set(gMidX, ry, rz);
         rafter.castShadow = true;
         canopyGroup.add(rafter);
+
+        // Smooth spherical end cap on the outer garden edge
+        const capGeo = new THREE.SphereGeometry(rafterRadius, 32, 16);
+        const cap = new THREE.Mesh(capGeo, smoothRafterMat);
+        cap.position.set(roofEdgeX, ry, rz);
+        canopyGroup.add(cap);
+
+        // Wall mount collar on the inner wall edge
+        const collarGeo = new THREE.CylinderGeometry(rafterRadius * 1.35, rafterRadius * 1.35, 0.025, 24);
+        const collar = new THREE.Mesh(collarGeo, smoothRafterMat);
+        collar.rotation.z = Math.PI / 2;
+        collar.position.set(wallEdgeX, ry, rz);
+        canopyGroup.add(collar);
       }
 
-      // Longitudinal steel beam on the roof edge (dividing covered area from garden strip)
-      const roofEdgeX = isCarportLeft ? b.minX : b.maxX;
-      const longBeam = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.06, depth), rafterMat);
-      longBeam.position.set(roofEdgeX, 2.92, cz);
+      // Smooth Longitudinal Cylindrical Edge Beam along the garden edge
+      const beamRadius = 0.024;
+      const longBeamGeo = new THREE.CylinderGeometry(beamRadius, beamRadius, totalRoofDepth, 32);
+      const longBeam = new THREE.Mesh(longBeamGeo, smoothRafterMat);
+      longBeam.rotation.x = Math.PI / 2 + slopeAngle;
+      longBeam.position.set(roofEdgeX, 3.05 - 0.115, (rafterZStart + rafterZEnd) / 2);
+      longBeam.castShadow = true;
       canopyGroup.add(longBeam);
 
-      // Translucent polycarbonate clear roof sheet
-      const polyMat = new THREE.MeshPhysicalMaterial({
-        color: 0xc8d8e8,
-        transparent: true,
-        opacity: 0.40,
-        roughness: 0.15,
-        transmission: 0.82,
-        ior: 1.48
-      });
-      const roofSheet = new THREE.Mesh(new THREE.PlaneGeometry(gWidth + 0.02, depth), polyMat);
-      roofSheet.rotation.x = -Math.PI / 2 + 0.04;
-      roofSheet.position.set(gMidX, 2.96, cz);
-      canopyGroup.add(roofSheet);
+      // Smooth Spherical End Caps on the Longitudinal Beam
+      const beamCapNorth = new THREE.Mesh(new THREE.SphereGeometry(beamRadius, 32, 16), smoothRafterMat);
+      beamCapNorth.position.set(roofEdgeX, 3.05, rafterZStart);
+      canopyGroup.add(beamCapNorth);
 
-      // Downpipe circle in blueprint (Roof edge, gutter, downpipe at the rear edge)
-      const pipeMat = new THREE.MeshStandardMaterial({ color: 0xedebe6, roughness: 0.6 });
+      const beamCapSouth = new THREE.Mesh(new THREE.SphereGeometry(beamRadius, 32, 16), smoothRafterMat);
+      beamCapSouth.position.set(roofEdgeX, 2.82, rafterZEnd);
+      canopyGroup.add(beamCapSouth);
+
+      // 6 Modular Tempered Roof Glass Panels with polished bevel edges
+      const numBays = numRafters - 1;
+      const baySpan = totalRoofDepth / numBays;
+      const panelGlassW = gWidth + 0.06;
+      const panelGlassL = baySpan - 0.016; // 16mm expansion joint between glass panels
+      const glassThick = 0.010; // 10mm tempered safety glass
+
+      for (let bi = 0; bi < numBays; bi++) {
+        const tMid = (bi + 0.5) / numBays;
+        const panelZ = rafterZStart - tMid * totalRoofDepth;
+        const panelY = 3.05 - tMid * 0.23 + rafterRadius + glassThick / 2;
+
+        const panelGeo = new THREE.BoxGeometry(panelGlassW, glassThick, panelGlassL);
+        const panelMesh = new THREE.Mesh(panelGeo, roofGlassMat);
+        panelMesh.rotation.x = slopeAngle;
+        panelMesh.position.set(gMidX, panelY, panelZ);
+        panelMesh.castShadow = false;
+        panelMesh.receiveShadow = true;
+
+        if (kitchenGroup && kitchenGroup.userData && kitchenGroup.userData.interactables) {
+          panelMesh.userData.dimInfo = {
+            label: "|-- 1200 mm Roof Glass Canopy --|",
+            p1: [isCarportLeft ? -1.50 : 0.30, panelY, panelZ],
+            p2: [isCarportLeft ? -0.30 : 1.50, panelY, panelZ],
+            axis: 'x'
+          };
+          kitchenGroup.userData.interactables.push(panelMesh);
+        }
+        canopyGroup.add(panelMesh);
+
+        // Slim transverse aluminum glazing cap batten over each rafter joint
+        const battenGeo = new THREE.BoxGeometry(panelGlassW, 0.008, 0.024);
+        const battenMesh = new THREE.Mesh(battenGeo, smoothRafterMat);
+        battenMesh.rotation.x = slopeAngle;
+        const rafterT = bi / numBays;
+        battenMesh.position.set(gMidX, 3.05 - rafterT * 0.23 + rafterRadius + glassThick + 0.004, rafterZStart - rafterT * totalRoofDepth);
+        canopyGroup.add(battenMesh);
+      }
+
+      // Rear Rainwater Gutter & Downpipe
+      const gutterMat = new THREE.MeshStandardMaterial({ color: 0x282b30, roughness: 0.3, metalness: 0.85 });
+      const gutterGeo = new THREE.BoxGeometry(gWidth + 0.08, 0.06, 0.08);
+      const gutter = new THREE.Mesh(gutterGeo, gutterMat);
+      gutter.position.set(gMidX, 2.80, rafterZEnd - 0.04);
+      canopyGroup.add(gutter);
+
+      // Smooth Cylindrical Downpipe leading to ground
+      const pipeMat = new THREE.MeshStandardMaterial({ color: 0x32363d, roughness: 0.3, metalness: 0.85 });
       const pipeX = roofEdgeX;
-      const pipeZ = -7.15;
-      const pipeGeo = new THREE.CylinderGeometry(0.045, 0.045, 2.85, 16);
+      const pipeZ = rafterZEnd - 0.04;
+      const pipeGeo = new THREE.CylinderGeometry(0.038, 0.038, 2.76, 24);
       const pipeMesh = new THREE.Mesh(pipeGeo, pipeMat);
-      pipeMesh.position.set(pipeX, 1.45, pipeZ);
+      pipeMesh.position.set(pipeX, 1.38, pipeZ);
       canopyGroup.add(pipeMesh);
 
-      // Horizontal drain outlet pipe at the bottom
-      const elbowGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.45, 16);
+      // Horizontal drain outlet elbow
+      const elbowGeo = new THREE.CylinderGeometry(0.038, 0.038, 0.38, 24);
       const elbowMesh = new THREE.Mesh(elbowGeo, pipeMat);
       elbowMesh.rotation.z = Math.PI / 2;
-      elbowMesh.position.set(pipeX + (isCarportLeft ? -0.2 : 0.2), 0.06, pipeZ);
+      elbowMesh.position.set(pipeX + (isCarportLeft ? -0.16 : 0.16), 0.05, pipeZ);
       canopyGroup.add(elbowMesh);
 
       houseGroup.add(canopyGroup);
@@ -452,11 +547,10 @@ export function buildHouse(scene, houseData) {
     });
   }
 
-  // Add Furnishings, Kitchen Suite, Gaming Room & Garden Glass Railing
+  // Add Furnishings, Kitchen Suite & Bedroom 1 Multi-Purpose Gaming Room
   buildFurniture(houseGroup, colliders);
   const kitchenGroup = buildKitchenSuite(houseGroup, colliders, houseData);
   const gamingRoomGroup = buildGamingRoom(houseGroup, colliders, houseData, kitchenGroup.userData.interactables);
-  const gardenRailingGroup = buildGardenRailing(houseGroup, colliders, houseData, kitchenGroup.userData.interactables);
 
   houseGroup.add(ceilingGroup);
   houseGroup.add(dimensionGroup);
