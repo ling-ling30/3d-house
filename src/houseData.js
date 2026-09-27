@@ -142,7 +142,7 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
       wallColor: "#f7f5f0",
       hasCeiling: true,
       ceilingHeight: 3.0,
-      description: "Rear master bedroom (4.3m deep L-shape) with hallway door and covered patio window."
+      description: "Rear master bedroom (4.3m deep L-shape) with hallway door."
     }
   ];
 
@@ -154,12 +154,10 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
     // Carport boundary segment (Z in [3.05, 7.25])
     { x1: -2.50, z1: 7.25, x2: -2.50, z2: 3.05, height: 2.6, thickness: 0.15, openings: [] },
 
-    // Living Room west wall with large window matching real 3D render (Z in [-0.75, 3.05])
+    // Living Room west wall (Z in [-0.75, 3.05])
     {
       x1: -2.50, z1: 3.05, x2: -2.50, z2: -0.75, height: 4.6, thickness: 0.15,
-      openings: [
-        { offset: 0.90, width: 2.00, height: 1.50, bottom: 0.90, type: 'window' }
-      ]
+      openings: []
     },
 
     // Rear garden strip boundary wall (Z in [-7.25, -0.75])
@@ -207,12 +205,11 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
     // MAIN DOOR & LIVING ROOM (4.6m HIGH CEILING)
     // ----------------------------------------------------
     // Wall dividing Carport from Living Room (Z = 3.05, X in carportX)
-    // Reaches 4.6m high ceiling with MAIN DOOR and sidelight window:
+    // Reaches 4.6m high ceiling with MAIN DOOR:
     {
       x1: carportX.minX, z1: 3.05, x2: carportX.maxX, z2: 3.05, height: 4.6, thickness: 0.15,
       openings: [
-        { offset: 1.60, width: 0.95, height: 2.30, bottom: 0.0, type: 'door' },
-        { offset: 0.40, width: 0.90, height: 1.60, bottom: 0.8, type: 'window' }
+        { offset: 1.60, width: 0.95, height: 2.30, bottom: 0.0, type: 'door' }
       ]
     },
 
@@ -276,14 +273,11 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
   ];
 
   // Wall dividing Bedroom 2 from Covered Area (X = coveredWallX, Z in [-7.25, -3.90])
-  // Contains BEDROOM 2 WINDOW looking into the Covered Area (exact as in media_1790513327300.png)
   if (!stripGardenSideWall) {
     walls.push({
       x1: coveredWallX, z1: -3.90, x2: coveredWallX, z2: -7.25,
       height: 3.0, thickness: 0.15,
-      openings: [
-        { offset: 0.90, width: 1.40, height: 1.60, bottom: 0.8, type: 'window' }
-      ]
+      openings: []
     });
   }
 
