@@ -316,3 +316,142 @@ export function createGardenCorridorTexture() {
   return texture;
 }
 
+// Warm glazed beige square ceramic tiles for kitchen backsplash
+export function createGlazedBeigeTileTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Base grout color
+  ctx.fillStyle = '#b8ad9c';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // 4x4 square glazed ceramic tiles (128x128 per tile)
+  const tileSize = 64; // 8x8 grid of square tiles
+  for (let x = 0; x < 512; x += tileSize) {
+    for (let y = 0; y < 512; y += tileSize) {
+      // Natural handmade glaze variation
+      const hueShift = (Math.sin(x * 0.1 + y * 0.2) * 0.5 + 0.5) * 8 - 4;
+      const r = Math.round(232 + hueShift);
+      const g = Math.round(222 + hueShift * 0.9);
+      const b = Math.round(204 + hueShift * 0.7);
+
+      // Tile face
+      ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+      ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+
+      // Soft glazed surface gradient highlight
+      const grad = ctx.createLinearGradient(x, y, x + tileSize, y + tileSize);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
+      grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+
+      // Delicate edge cushion bevel
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x + 2.5, y + 2.5, tileSize - 5, tileSize - 5);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(4, 2);
+  return texture;
+}
+
+// Polished white marble / granite countertop with fine grey veining
+export function createWhiteMarbleCounterTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Base luminous crisp white
+  ctx.fillStyle = '#faf9f6';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Soft subtle cloudy depth
+  for (let i = 0; i < 20; i++) {
+    const rx = Math.random() * 1024;
+    const ry = Math.random() * 1024;
+    const rad = 100 + Math.random() * 200;
+    const grad = ctx.createRadialGradient(rx, ry, 10, rx, ry, rad);
+    grad.addColorStop(0, 'rgba(235, 235, 232, 0.4)');
+    grad.addColorStop(1, 'rgba(250, 249, 246, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(rx, ry, rad, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Elegant flowing grey smoke veins
+  const veins = [
+    { startX: 50, startY: 0, cp1x: 280, cp1y: 350, cp2x: 420, cp2y: 650, endX: 750, endY: 1024, width: 2.2, alpha: 0.28 },
+    { startX: 620, startY: 0, cp1x: 520, cp1y: 400, cp2x: 780, cp2y: 720, endX: 920, endY: 1024, width: 1.8, alpha: 0.22 },
+    { startX: 0, startY: 420, cp1x: 310, cp1y: 490, cp2x: 580, cp2y: 380, endX: 1024, endY: 580, width: 1.5, alpha: 0.18 },
+    { startX: 200, startY: 0, cp1x: 350, cp1y: 200, cp2x: 280, cp2y: 450, endX: 450, endY: 600, width: 1.0, alpha: 0.15 }
+  ];
+
+  veins.forEach(v => {
+    ctx.strokeStyle = `rgba(135, 142, 148, ${v.alpha})`;
+    ctx.lineWidth = v.width;
+    ctx.beginPath();
+    ctx.moveTo(v.startX, v.startY);
+    ctx.bezierCurveTo(v.cp1x, v.cp1y, v.cp2x, v.cp2y, v.endX, v.endY);
+    ctx.stroke();
+
+    // Secondary hairline feathering
+    ctx.strokeStyle = `rgba(165, 170, 175, ${v.alpha * 0.6})`;
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(v.startX + 8, v.startY + 4);
+    ctx.bezierCurveTo(v.cp1x + 12, v.cp1y - 8, v.cp2x - 10, v.cp2y + 15, v.endX + 6, v.endY);
+    ctx.stroke();
+  });
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+  return texture;
+}
+
+// Natural warm honey oak wood for display tower and open shelves
+export function createWarmOakTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Warm honey golden oak tone
+  ctx.fillStyle = '#bf9159';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle grain lines
+  for (let y = 0; y < 512; y += 3) {
+    const darkness = Math.sin(y * 0.15) * 0.08 + (Math.random() - 0.5) * 0.04;
+    ctx.fillStyle = `rgba(85, 52, 22, ${Math.max(0, 0.1 + darkness)})`;
+    ctx.fillRect(0, y, 512, 1.5);
+  }
+
+  // Cathedral grain swirls
+  ctx.strokeStyle = 'rgba(75, 45, 18, 0.18)';
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.ellipse(256, 180, 160, 80, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.ellipse(256, 360, 190, 90, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 2);
+  return texture;
+}
+

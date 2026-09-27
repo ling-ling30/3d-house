@@ -9,6 +9,7 @@ import {
   createCarportTexture
 } from './textures.js';
 import { buildFurniture } from './furnitureBuilder.js';
+import { buildKitchenSuite } from './kitchenBuilder.js';
 
 
 export function buildHouse(scene, houseData) {
@@ -449,8 +450,9 @@ export function buildHouse(scene, houseData) {
     });
   }
 
-  // Add Furnishings
+  // Add Furnishings & Kitchen Suite
   buildFurniture(houseGroup, colliders);
+  buildKitchenSuite(houseGroup, colliders, houseData);
 
   houseGroup.add(ceilingGroup);
   houseGroup.add(dimensionGroup);

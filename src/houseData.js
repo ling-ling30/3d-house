@@ -82,7 +82,7 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
       wallColor: "#fbfaf8",
       hasCeiling: true,
       ceilingHeight: 4.6,
-      description: "Kitchen and dining space (2.2m × 3.2m) seamlessly connected under high 4.6m ceiling."
+      description: "Modern Kitchen Suite: Matte black handleless cabinetry, white marble countertops, glazed beige ceramic backsplash, warm LED lighting, Modena 2-burner hob, undermount sink, oak microwave tower, and tall fridge housing."
     },
     {
       id: "bathroom",
