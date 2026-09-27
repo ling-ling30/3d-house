@@ -22,6 +22,7 @@ export function buildHouse(scene, houseData) {
   ceilingGroup.name = "ceilingGroup";
   const dimensionGroup = new THREE.Group();
   dimensionGroup.name = "dimensionGroup";
+  const interactables = [];
 
   // Textures
   const woodFloorTex = createWoodFloorTexture();
@@ -268,15 +269,13 @@ export function buildHouse(scene, houseData) {
         panelMesh.castShadow = false;
         panelMesh.receiveShadow = true;
 
-        if (kitchenGroup && kitchenGroup.userData && kitchenGroup.userData.interactables) {
-          panelMesh.userData.dimInfo = {
-            label: "|-- 1200 mm Roof Glass Canopy --|",
-            p1: [isCarportLeft ? -1.50 : 0.30, panelY, panelZ],
-            p2: [isCarportLeft ? -0.30 : 1.50, panelY, panelZ],
-            axis: 'x'
-          };
-          kitchenGroup.userData.interactables.push(panelMesh);
-        }
+        panelMesh.userData.dimInfo = {
+          label: "|-- 1200 mm Roof Glass Canopy --|",
+          p1: [isCarportLeft ? -1.50 : 0.30, panelY, panelZ],
+          p2: [isCarportLeft ? -0.30 : 1.50, panelY, panelZ],
+          axis: 'x'
+        };
+        interactables.push(panelMesh);
         canopyGroup.add(panelMesh);
 
         // Slim transverse aluminum glazing cap batten over each rafter joint
@@ -550,7 +549,10 @@ export function buildHouse(scene, houseData) {
   // Add Furnishings, Kitchen Suite & Bedroom 1 Multi-Purpose Gaming Room
   buildFurniture(houseGroup, colliders);
   const kitchenGroup = buildKitchenSuite(houseGroup, colliders, houseData);
-  const gamingRoomGroup = buildGamingRoom(houseGroup, colliders, houseData, kitchenGroup.userData.interactables);
+  if (kitchenGroup && kitchenGroup.userData && kitchenGroup.userData.interactables) {
+    interactables.push(...kitchenGroup.userData.interactables);
+  }
+  const gamingRoomGroup = buildGamingRoom(houseGroup, colliders, houseData, interactables);
 
   houseGroup.add(ceilingGroup);
   houseGroup.add(dimensionGroup);
@@ -562,7 +564,7 @@ export function buildHouse(scene, houseData) {
     ceilingGroup,
     dimensionGroup,
     kitchenGroup,
-    interactables: kitchenGroup.userData.interactables,
+    interactables,
     rooms: houseData.rooms,
     playerSpawn: houseData.playerSpawn
   };
