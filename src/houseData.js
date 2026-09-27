@@ -252,10 +252,11 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
     { x1: kitchenX.minX, z1: -1.15, x2: kitchenX.maxX, z2: -1.15, height: 4.6, thickness: 0.12, openings: [] },
 
     // Wall with Bathroom door (X = divX, Z in [-2.95, -1.15])
+    // Positioned near the kitchen side instead of in the middle (matching blueprint!)
     {
       x1: divX, z1: -1.15, x2: divX, z2: -2.95, height: 3.0, thickness: 0.12,
       openings: [
-        { offset: 0.45, width: 0.85, height: 2.20, bottom: 0.0, type: 'door' }
+        { offset: 0.08, width: 0.85, height: 2.20, bottom: 0.0, type: 'door' }
       ]
     },
 
