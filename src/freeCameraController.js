@@ -159,14 +159,15 @@ export class FreeCameraController {
       if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
-      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-      if (!isTouch && !this.isLocked) {
+      if (!this.isLocked) {
         this.lock();
       }
     };
 
     this.onPointerLockChange = () => {
       this.isLocked = (document.pointerLockElement === this.domElement);
+      this.prevMouseX = 0;
+      this.prevMouseY = 0;
     };
 
     // Mouse drag-to-look (fallback or when pointer isn't locked)
@@ -178,6 +179,10 @@ export class FreeCameraController {
       this.isMouseDown = true;
       this.prevMouseX = e.clientX;
       this.prevMouseY = e.clientY;
+
+      if (!this.isLocked) {
+        this.lock();
+      }
     };
 
     this.onMouseMove = (e) => {
@@ -191,18 +196,27 @@ export class FreeCameraController {
         if (this.isLocked) {
           deltaX = e.movementX || 0;
           deltaY = e.movementY || 0;
+          this.prevMouseX = e.clientX;
+          this.prevMouseY = e.clientY;
         } else {
+          if (this.prevMouseX === 0 && this.prevMouseY === 0) {
+            this.prevMouseX = e.clientX;
+            this.prevMouseY = e.clientY;
+          }
           deltaX = e.clientX - this.prevMouseX;
           deltaY = e.clientY - this.prevMouseY;
           this.prevMouseX = e.clientX;
           this.prevMouseY = e.clientY;
         }
 
-        this.yaw -= deltaX * this.mouseSensitivity;
-        this.pitch -= deltaY * this.mouseSensitivity;
-        // Clamp pitch to avoid flip (+/- 87.5 degrees)
-        this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
-        this.applyOrientation();
+        // Clamp extreme jumps
+        if (Math.abs(deltaX) < 500 && Math.abs(deltaY) < 500) {
+          this.yaw -= deltaX * this.mouseSensitivity;
+          this.pitch -= deltaY * this.mouseSensitivity;
+          // Clamp pitch to avoid flip (+/- 87.5 degrees)
+          this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
+          this.applyOrientation();
+        }
       }
     };
 
@@ -233,6 +247,21 @@ export class FreeCameraController {
     this.onTouchStart = (e) => {
       if (!this.enabled) return;
 
+      // Clean up orphaned touch IDs
+      const activeIds = new Set();
+      for (let i = 0; i < e.touches.length; i++) {
+        activeIds.add(e.touches[i].identifier);
+      }
+      if (this.touchMoveId !== null && !activeIds.has(this.touchMoveId)) {
+        this.touchMoveId = null;
+        this.inputForward = 0;
+        this.inputStrafe = 0;
+        this.updateJoystickUI(0, 0);
+      }
+      if (this.touchLookId !== null && !activeIds.has(this.touchLookId)) {
+        this.touchLookId = null;
+      }
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
         const target = touch.target;
@@ -248,7 +277,7 @@ export class FreeCameraController {
           this.touchMoveOriginX = touch.clientX;
           this.touchMoveOriginY = touch.clientY;
           this.updateJoystickUI(0, 0);
-        } else if (!isJoystick && this.touchLookId === null) {
+        } else if (!isJoystick) {
           this.touchLookId = touch.identifier;
           this.touchLookPrevX = touch.clientX;
           this.touchLookPrevY = touch.clientY;
@@ -259,6 +288,7 @@ export class FreeCameraController {
     this.onTouchMove = (e) => {
       if (!this.enabled) return;
 
+      let handled = false;
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
 
@@ -268,10 +298,13 @@ export class FreeCameraController {
           this.touchLookPrevX = touch.clientX;
           this.touchLookPrevY = touch.clientY;
 
-          this.yaw -= deltaX * 0.0048;
-          this.pitch -= deltaY * 0.0038;
-          this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
-          this.applyOrientation();
+          if (Math.abs(deltaX) < 300 && Math.abs(deltaY) < 300) {
+            this.yaw -= deltaX * 0.0048;
+            this.pitch -= deltaY * 0.0038;
+            this.pitch = Math.max(-1.52, Math.min(1.52, this.pitch));
+            this.applyOrientation();
+          }
+          handled = true;
         } else if (touch.identifier === this.touchMoveId) {
           const dx = touch.clientX - this.touchMoveOriginX;
           const dy = touch.clientY - this.touchMoveOriginY;
@@ -286,7 +319,12 @@ export class FreeCameraController {
 
           this.inputStrafe = knobX / maxRadius;
           this.inputForward = -knobY / maxRadius; // Upward drag flies forward along 3D look
+          handled = true;
         }
+      }
+
+      if (handled && e.cancelable) {
+        e.preventDefault();
       }
     };
 
@@ -295,12 +333,21 @@ export class FreeCameraController {
         const touch = e.changedTouches[i];
         if (touch.identifier === this.touchLookId) {
           this.touchLookId = null;
-        } else if (touch.identifier === this.touchMoveId) {
+        }
+        if (touch.identifier === this.touchMoveId) {
           this.touchMoveId = null;
           this.inputForward = 0;
           this.inputStrafe = 0;
           this.updateJoystickUI(0, 0);
         }
+      }
+
+      if (e.touches.length === 0) {
+        this.touchLookId = null;
+        this.touchMoveId = null;
+        this.inputForward = 0;
+        this.inputStrafe = 0;
+        this.updateJoystickUI(0, 0);
       }
     };
 
@@ -317,7 +364,7 @@ export class FreeCameraController {
     window.addEventListener('contextmenu', this.onContextMenu);
 
     window.addEventListener('touchstart', this.onTouchStart, { passive: true });
-    window.addEventListener('touchmove', this.onTouchMove, { passive: true });
+    window.addEventListener('touchmove', this.onTouchMove, { passive: false });
     window.addEventListener('touchend', this.onTouchEnd, { passive: true });
     window.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
   }
@@ -337,12 +384,14 @@ export class FreeCameraController {
   }
 
   lock() {
-    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
-    if (!isTouch) {
+    if (this.domElement && this.domElement.requestPointerLock) {
       try {
-        this.domElement.requestPointerLock();
-      } catch (err) {
-        console.warn('PointerLock not available:', err);
+        const promise = this.domElement.requestPointerLock();
+        if (promise && promise.catch) {
+          promise.catch(() => {});
+        }
+      } catch {
+        // Safe fallback
       }
     }
   }
