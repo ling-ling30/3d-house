@@ -455,3 +455,153 @@ export function createWarmOakTexture() {
   return texture;
 }
 
+// Architectural Tempered Canopy Glass Texture (Realistic micro-frit ceramic border & subtle tint)
+export function createArchitecturalGlassTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Clear ultra-pure float glass base with faint sky-cyan sheen
+  ctx.fillStyle = 'rgba(235, 246, 252, 0.45)';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Subtle diagonal reflection tint gradient
+  const grad = ctx.createLinearGradient(0, 0, 1024, 1024);
+  grad.addColorStop(0, 'rgba(245, 252, 255, 0.25)');
+  grad.addColorStop(0.45, 'rgba(220, 242, 250, 0.12)');
+  grad.addColorStop(0.7, 'rgba(230, 246, 255, 0.28)');
+  grad.addColorStop(1, 'rgba(215, 238, 248, 0.18)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Outer polished edge bevel border line
+  ctx.strokeStyle = 'rgba(120, 195, 225, 0.65)';
+  ctx.lineWidth = 14;
+  ctx.strokeRect(10, 10, 1004, 1004);
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(20, 20, 984, 984);
+
+  // Architectural Ceramic Safety Frit Pattern along perimeter (gradient dot matrix)
+  // Modern solar canopy glass uses ceramic frit dots along edges to reduce glare and provide architectural definition
+  const dotBands = 8;
+  const margin = 28;
+  const step = 9;
+
+  for (let b = 0; b < dotBands; b++) {
+    const inset = margin + b * step;
+    const dotRadius = Math.max(0.8, 3.2 - b * 0.35);
+    const alpha = Math.max(0.12, 0.75 - b * 0.08);
+    ctx.fillStyle = `rgba(240, 250, 255, ${alpha})`;
+
+    // Top & bottom rows
+    for (let x = inset; x <= 1024 - inset; x += 18) {
+      ctx.beginPath();
+      ctx.arc(x, inset, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(x, 1024 - inset, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Left & right rows
+    for (let y = inset; y <= 1024 - inset; y += 18) {
+      ctx.beginPath();
+      ctx.arc(inset, y, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(1024 - inset, y, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  // Microscopic CAD tempered safety glass certification corner stamp
+  ctx.fillStyle = 'rgba(160, 215, 238, 0.55)';
+  ctx.font = 'bold 15px "Courier New", monospace';
+  ctx.fillText('TEMPERED SAFETY GLASS • 10mm EN-12150', 44, 985);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+// Procedural Float-Glass Normal Map (Microscopic surface planarity & bevel edge refraction)
+export function createGlassNormalMap() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Neutral normal map base: RGB(128, 128, 255) -> normal pointing straight +Z
+  ctx.fillStyle = 'rgb(128, 128, 255)';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle float-glass surface undulations (gentle cooling waves)
+  const imgData = ctx.getImageData(0, 0, 512, 512);
+  const data = imgData.data;
+
+  for (let y = 0; y < 512; y++) {
+    for (let x = 0; x < 512; x++) {
+      const idx = (y * 512 + x) * 4;
+
+      // Gentle low-frequency float wave
+      const waveX = Math.sin(x * 0.025 + Math.cos(y * 0.015)) * 6.0;
+      const waveY = Math.cos(y * 0.025 + Math.sin(x * 0.015)) * 6.0;
+
+      // Bevel edge normal distortion near borders
+      let edgeDx = 0;
+      let edgeDy = 0;
+      const border = 16;
+      if (x < border) edgeDx = -(border - x) * 1.8;
+      if (x > 512 - border) edgeDx = (x - (512 - border)) * 1.8;
+      if (y < border) edgeDy = -(border - y) * 1.8;
+      if (y > 512 - border) edgeDy = (y - (512 - border)) * 1.8;
+
+      data[idx] = Math.min(255, Math.max(0, 128 + waveX + edgeDx));     // Normal X
+      data[idx + 1] = Math.min(255, Math.max(0, 128 + waveY + edgeDy)); // Normal Y
+      data[idx + 2] = 255;                                               // Normal Z
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+// Procedural Glass Roughness Map (Micro-sheen & nano-polish distribution)
+export function createGlassRoughnessMap() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 256;
+  canvas.height = 256;
+  const ctx = canvas.getContext('2d');
+
+  // Ultra-smooth specular float glass base (low roughness ~0.04 -> grayscale 10)
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, 256, 256);
+
+  // Subtle nano-polish streaks
+  for (let y = 0; y < 256; y += 4) {
+    const val = 12 + Math.floor(Math.sin(y * 0.2) * 5);
+    ctx.fillStyle = `rgb(${val}, ${val}, ${val})`;
+    ctx.fillRect(0, y, 256, 2);
+  }
+
+  // Border silicone gasket contact zone (roughness ~0.35)
+  ctx.strokeStyle = '#505050';
+  ctx.lineWidth = 10;
+  ctx.strokeRect(5, 5, 246, 246);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  return texture;
+}
+
+
