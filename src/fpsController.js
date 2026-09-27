@@ -21,11 +21,11 @@ export class FPSController {
     this.isSprinting = false;
 
     // Physics & speeds
-    this.walkSpeed = 4.0; // m/s
-    this.sprintSpeed = 6.5; // m/s
+    this.walkSpeed = 4.2; // m/s
+    this.sprintSpeed = 6.8; // m/s
     this.velocity = new THREE.Vector3();
     this.direction = new THREE.Vector3();
-    this.playerRadius = 0.24; // slim clearance radius for easy door passage
+    this.playerRadius = 0.22; // slim clearance radius for easy door passage
     this.eyeHeight = 1.65; // realistic standing eye level
 
     // Head bobbing
@@ -54,6 +54,11 @@ export class FPSController {
     this.inputForward = 0;
     this.inputStrafe = 0;
     this.joystickKnob = null;
+
+    // Two-finger swipe to walk on mobile
+    this.isTwoFingerDrag = false;
+    this.twoFingerPrevY = 0;
+    this.twoFingerPrevX = 0;
 
     this.setupListeners();
   }
@@ -114,29 +119,33 @@ export class FPSController {
       }
     };
 
-    // Canvas click to lock
+    // Canvas click to lock pointer if desktop user wants standard pointer lock
     this.onCanvasClick = (e) => {
       // Don't lock if clicking on UI buttons or overlays
-      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('#touch-dpad')) {
+      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
-      if (this.enabled && !this.controls.isLocked) {
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      if (this.enabled && !isTouch && !this.controls.isLocked) {
         this.lock();
       }
     };
 
-    // Drag-to-look fallback
+    // Mouse drag-to-look (left-click, right-click, or middle-click)
     this.onMouseDown = (e) => {
-      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('#touch-dpad')) {
+      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
       this.isMouseDown = true;
       this.prevMouseX = e.clientX;
       this.prevMouseY = e.clientY;
+      this.euler.setFromQuaternion(this.camera.quaternion);
     };
 
     this.onMouseMove = (e) => {
       if (!this.enabled) return;
+
+      // When pointer is NOT locked, allow clicking and dragging anywhere to rotate view
       if (!this.controls.isLocked && this.isMouseDown) {
         const deltaX = e.clientX - this.prevMouseX;
         const deltaY = e.clientY - this.prevMouseY;
@@ -144,9 +153,9 @@ export class FPSController {
         this.prevMouseY = e.clientY;
 
         this.euler.setFromQuaternion(this.camera.quaternion);
-        this.euler.y -= deltaX * 0.003;
-        this.euler.x -= deltaY * 0.003;
-        this.euler.x = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, this.euler.x));
+        this.euler.y -= deltaX * 0.0035;
+        this.euler.x -= deltaY * 0.0035;
+        this.euler.x = Math.max(-Math.PI / 2 + 0.08, Math.min(Math.PI / 2 - 0.08, this.euler.x));
         this.camera.quaternion.setFromEuler(this.euler);
       }
     };
@@ -155,33 +164,42 @@ export class FPSController {
       this.isMouseDown = false;
     };
 
+    // ----------------------------------------------------
     // Mobile Touch & Swipe Event Handlers
+    // ----------------------------------------------------
     this.onTouchStart = (e) => {
       if (!this.enabled) return;
 
+      const target = e.target;
+      // Don't capture touches on HUD toolbar, minimap, room pills, or dialogs
+      if (target.closest('#hud-toolbar') || target.closest('#minimap-wrapper') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
+        return;
+      }
+
+      // Two-finger touch gesture for walking
+      if (e.touches.length === 2) {
+        this.isTwoFingerDrag = true;
+        this.twoFingerPrevY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        this.twoFingerPrevX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        return;
+      }
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
-        const target = touch.target;
+        const isJoystick = !!touch.target.closest('#virtual-joystick');
 
-        // Don't capture touches on HUD toolbar, minimap, room pills, or dialogs
-        if (target.closest('#hud-toolbar') || target.closest('#minimap-wrapper') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
-          continue;
-        }
-
-        const isLeftZone = touch.clientX < window.innerWidth * 0.45 && touch.clientY > window.innerHeight * 0.35;
-        const isJoystick = target.closest('#virtual-joystick');
-
-        if ((isJoystick || isLeftZone) && this.touchMoveId === null) {
-          // Touch in move zone -> initialize virtual joystick movement
+        if (isJoystick && this.touchMoveId === null) {
+          // Touching on the virtual joystick pad -> walk / strafe
           this.touchMoveId = touch.identifier;
           this.touchMoveOriginX = touch.clientX;
           this.touchMoveOriginY = touch.clientY;
           this.updateJoystickUI(0, 0);
         } else if (this.touchLookId === null) {
-          // Touch in look zone -> swipe to look around
+          // Touching anywhere on the screen -> SWIPE TO LOOK AROUND
           this.touchLookId = touch.identifier;
           this.touchLookPrevX = touch.clientX;
           this.touchLookPrevY = touch.clientY;
+          this.euler.setFromQuaternion(this.camera.quaternion);
         }
       }
     };
@@ -189,23 +207,40 @@ export class FPSController {
     this.onTouchMove = (e) => {
       if (!this.enabled) return;
 
+      // Handle Two-Finger Swipe to Walk
+      if (this.isTwoFingerDrag && e.touches.length >= 2) {
+        const currentY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
+        const currentX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
+        const deltaY = currentY - this.twoFingerPrevY;
+        const deltaX = currentX - this.twoFingerPrevX;
+        this.twoFingerPrevY = currentY;
+        this.twoFingerPrevX = currentX;
+
+        // Two-finger swipe up moves forward, swipe down moves backward
+        this.inputForward = -deltaY * 0.08;
+        this.inputStrafe = deltaX * 0.08;
+        return;
+      }
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
 
         if (touch.identifier === this.touchLookId) {
+          // Swipe to rotate / pan camera view
           const deltaX = touch.clientX - this.touchLookPrevX;
           const deltaY = touch.clientY - this.touchLookPrevY;
           this.touchLookPrevX = touch.clientX;
           this.touchLookPrevY = touch.clientY;
 
           this.euler.setFromQuaternion(this.camera.quaternion);
-          // Swiping horizontally rotates yaw smoothly
-          this.euler.y -= deltaX * 0.0045;
-          // Swiping vertically tilts pitch
-          this.euler.x -= deltaY * 0.0035;
-          this.euler.x = Math.max(-Math.PI / 2 + 0.15, Math.min(Math.PI / 2 - 0.15, this.euler.x));
+          // Horizontal swipe rotates yaw
+          this.euler.y -= deltaX * 0.0050;
+          // Vertical swipe tilts pitch
+          this.euler.x -= deltaY * 0.0040;
+          this.euler.x = Math.max(-Math.PI / 2 + 0.12, Math.min(Math.PI / 2 - 0.12, this.euler.x));
           this.camera.quaternion.setFromEuler(this.euler);
         } else if (touch.identifier === this.touchMoveId) {
+          // Virtual joystick move
           const dx = touch.clientX - this.touchMoveOriginX;
           const dy = touch.clientY - this.touchMoveOriginY;
           const maxRadius = 45; // max stick distance in pixels
@@ -225,6 +260,14 @@ export class FPSController {
     };
 
     this.onTouchEnd = (e) => {
+      if (e.touches.length < 2) {
+        this.isTwoFingerDrag = false;
+        if (this.touchMoveId === null) {
+          this.inputForward = 0;
+          this.inputStrafe = 0;
+        }
+      }
+
       for (let i = 0; i < e.changedTouches.length; i++) {
         const touch = e.changedTouches[i];
 
@@ -300,6 +343,7 @@ export class FPSController {
 
     if (rotY !== null) {
       this.camera.rotation.set(0, rotY, 0);
+      this.euler.set(0, rotY, 0, 'YXZ');
     }
   }
 
@@ -351,7 +395,7 @@ export class FPSController {
 
     // Smooth keyboard turning (Q and E keys)
     if (this.turnLeft || this.turnRight) {
-      const turnSpeed = 2.2; // rad/s
+      const turnSpeed = 2.4; // rad/s
       const turnVal = Number(this.turnRight) - Number(this.turnLeft);
       this.euler.setFromQuaternion(this.camera.quaternion);
       this.euler.y -= turnVal * turnSpeed * delta;
@@ -451,6 +495,11 @@ export class FPSController {
     window.removeEventListener('mousedown', this.onMouseDown);
     window.removeEventListener('mousemove', this.onMouseMove);
     window.removeEventListener('mouseup', this.onMouseUp);
+
+    window.removeEventListener('touchstart', this.onTouchStart);
+    window.removeEventListener('touchmove', this.onTouchMove);
+    window.removeEventListener('touchend', this.onTouchEnd);
+    window.removeEventListener('touchcancel', this.onTouchEnd);
     this.controls.dispose();
   }
 }

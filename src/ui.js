@@ -88,9 +88,9 @@ export class UIManager {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
             <span>Dollhouse 3D</span>
           </button>
-          <button id="btn-mode-walk" class="tool-btn" title="First-Person Walk Mode">
+          <button id="btn-mode-walk" class="tool-btn" title="Free Camera Walk (WASD + Mouse / Mobile Swipe)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 4v16"/><path d="M17 4v16"/><path d="M19 4H9.5a4.5 4.5 0 0 0 0 9H13"/></svg>
-            <span>Walk Mode</span>
+            <span>Free Mode</span>
           </button>
         </div>
 
@@ -497,8 +497,35 @@ export class UIManager {
     const lookControls = document.getElementById('touch-look-controls');
     if (lookControls) lookControls.style.display = mode === 'walk' ? 'flex' : 'none';
 
-    if (mode === 'dollhouse') {
+    // Keep intrusive modal overlay hidden
+    if (this.dom.overlay) {
       this.dom.overlay.classList.add('hidden');
+    }
+
+    this.showModeHint(mode);
+  }
+
+  showModeHint(mode) {
+    let hint = document.getElementById('walk-mode-toast');
+    if (!hint) {
+      hint = document.createElement('div');
+      hint.id = 'walk-mode-toast';
+      document.body.appendChild(hint);
+    }
+    if (mode === 'walk') {
+      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+      hint.innerText = isTouch
+        ? '👉 Swipe screen to look • Drag bottom-left pad to walk'
+        : '🎮 Free Mode: WASD to walk • Mouse to look around • Shift to sprint';
+      hint.style.display = 'block';
+      hint.style.opacity = '1';
+      clearTimeout(this.hintTimeout);
+      this.hintTimeout = setTimeout(() => {
+        hint.style.opacity = '0';
+        setTimeout(() => { hint.style.display = 'none'; }, 500);
+      }, 4000);
+    } else {
+      hint.style.display = 'none';
     }
   }
 

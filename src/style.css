@@ -854,3 +854,37 @@ body, html {
   }
 }
 
+/* Floating Toast Notification for Free Walk Mode */
+#walk-mode-toast {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.90);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 18px;
+  border-radius: 20px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  z-index: 100;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  #walk-mode-toast {
+    font-size: 11px;
+    padding: 6px 14px;
+    top: 68px;
+    max-width: 90vw;
+    white-space: normal;
+    text-align: center;
+  }
+}
+
