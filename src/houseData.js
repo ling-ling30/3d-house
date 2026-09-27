@@ -229,10 +229,17 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
     },
 
     // Upper Drop Wall at Z = -0.75 (from Y = 3.0m to Y = 4.6m)
-    // Encloses the high ceiling of the Living Room, completely covering the yellow-marked zone above hallway!
-    // Ground level (Y = 0 to 3.0m) is 100% open with zero wall/door between Living and Garden/Hallway (red-marked removal):
+    // Encloses the high ceiling of the Living Room, completely covering the zone above hallway:
     {
       x1: -2.50, z1: -0.75, x2: divX, z2: -0.75,
+      bottom: 3.0, height: 4.6, thickness: 0.15,
+      openings: []
+    },
+
+    // Upper Drop Wall at X = divX (from Z = -0.75 to Z = -1.15, Y = 3.0m to 4.6m)
+    // Walls off the vertical gap between Living Room rear drop wall (Z = -0.75) and Kitchen rear wall (Z = -1.15):
+    {
+      x1: divX, z1: -0.75, x2: divX, z2: -1.15,
       bottom: 3.0, height: 4.6, thickness: 0.15,
       openings: []
     },
