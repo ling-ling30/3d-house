@@ -151,54 +151,6 @@ export function buildHouse(scene, houseData) {
             ceilingGroup.add(bulb);
           }
         }
-
-        // Modern architectural pendant chandelier for the high-ceiling Living Room
-        if (room.id === 'living') {
-          const pendantGroup = new THREE.Group();
-          pendantGroup.name = "livingPendant";
-
-          // Drop cord from 4.6m ceiling
-          const cordGeo = new THREE.CylinderGeometry(0.006, 0.006, ceilHeight - 2.80, 8);
-          const cordMat = new THREE.MeshStandardMaterial({ color: 0x1f2328, roughness: 0.5 });
-          const cordMesh = new THREE.Mesh(cordGeo, cordMat);
-          cordMesh.position.set(scx, (ceilHeight + 2.80) / 2, scz);
-          pendantGroup.add(cordMesh);
-
-          // Ceiling canopy cap
-          const capGeo = new THREE.CylinderGeometry(0.10, 0.10, 0.03, 16);
-          const capMesh = new THREE.Mesh(capGeo, windowFrameMat);
-          capMesh.position.set(scx, ceilHeight - 0.015, scz);
-          pendantGroup.add(capMesh);
-
-          // Dual brass rings
-          const ringMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.2 });
-          const ring1 = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.02, 16, 32), ringMat);
-          ring1.rotation.x = Math.PI / 2;
-          ring1.position.set(scx, 2.80, scz);
-          pendantGroup.add(ring1);
-
-          const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.32, 0.016, 16, 32), ringMat);
-          ring2.rotation.x = Math.PI / 2 + 0.2;
-          ring2.rotation.y = 0.25;
-          ring2.position.set(scx, 2.68, scz);
-          pendantGroup.add(ring2);
-
-          // Luminous sphere
-          const bulbGeo = new THREE.SphereGeometry(0.08, 16, 16);
-          const bulbGlowMat = new THREE.MeshBasicMaterial({ color: 0xfff6e5 });
-          const glowSphere = new THREE.Mesh(bulbGeo, bulbGlowMat);
-          glowSphere.position.set(scx, 2.74, scz);
-          pendantGroup.add(glowSphere);
-
-          // Warm ambient point light cast downward into living room
-          const pLight = new THREE.PointLight(0xffeed6, 1.2, 12, 1.6);
-          pLight.position.set(scx, 2.65, scz);
-          pLight.castShadow = true;
-          pLight.shadow.bias = -0.001;
-          pendantGroup.add(pLight);
-
-          ceilingGroup.add(pendantGroup);
-        }
       }
     });
 
@@ -366,10 +318,11 @@ export function buildHouse(scene, houseData) {
 
     const ux = dx / totalLen;
     const uz = dz / totalLen;
+    const wallBottom = w.bottom || 0;
     const wallH = w.height || houseData.ceilingHeight;
 
     if (!w.openings || w.openings.length === 0) {
-      addWallPiece(w.x1, w.z1, w.x2, w.z2, 0, wallH, w.thickness);
+      addWallPiece(w.x1, w.z1, w.x2, w.z2, wallBottom, wallH, w.thickness);
       return;
     }
 
@@ -387,7 +340,7 @@ export function buildHouse(scene, houseData) {
         const segZ1 = w.z1 + uz * currentPos;
         const segX2 = w.x1 + ux * opStart;
         const segZ2 = w.z1 + uz * opStart;
-        addWallPiece(segX1, segZ1, segX2, segZ2, 0, wallH, w.thickness);
+        addWallPiece(segX1, segZ1, segX2, segZ2, wallBottom, wallH, w.thickness);
       }
 
       // Inside opening: check sill (bottom) and lintel (top)
@@ -446,7 +399,7 @@ export function buildHouse(scene, houseData) {
       const segZ1 = w.z1 + uz * currentPos;
       const segX2 = w.x2;
       const segZ2 = w.z2;
-      addWallPiece(segX1, segZ1, segX2, segZ2, 0, wallH, w.thickness);
+      addWallPiece(segX1, segZ1, segX2, segZ2, wallBottom, wallH, w.thickness);
     }
   });
 

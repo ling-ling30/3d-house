@@ -231,15 +231,15 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
       ]
     },
 
-    // Rear wall of Living Room facing rear Covered Patio & Garden (Z = -0.75, X in [-2.50, -0.30])
-    // Features LARGE FLOOR-TO-CEILING PANORAMIC WINDOW and patio terrace door:
+    // Upper Drop Wall at Z = -0.75 (from Y = 3.0m to Y = 4.6m)
+    // Encloses the high ceiling of the Living Room, completely covering the yellow-marked zone above hallway!
+    // Ground level (Y = 0 to 3.0m) is 100% open with zero wall/door between Living and Garden/Hallway (red-marked removal):
     {
-      x1: -2.50, z1: -0.75, x2: coveredWallX, z2: -0.75, height: 4.6, thickness: 0.15,
-      openings: [
-        { offset: 0.20, width: 1.25, height: 2.50, bottom: 0.20, type: 'window' },
-        { offset: 1.55, width: 0.65, height: 2.30, bottom: 0.0, type: 'door' }
-      ]
+      x1: -2.50, z1: -0.75, x2: divX, z2: -0.75,
+      bottom: 3.0, height: 4.6, thickness: 0.15,
+      openings: []
     },
+
 
     // ----------------------------------------------------
     // REAR ZONE
