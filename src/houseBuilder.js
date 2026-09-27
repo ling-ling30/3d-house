@@ -338,29 +338,37 @@ export function buildHouse(scene, houseData) {
       }
 
       // ----------------------------------------------------
-      // 5. RAINWATER GUTTER & CORNER PVC DOWNPIPE (Exact to Photo!)
+      // 5. RAINWATER GUTTER & DOWNPIPE (After the Canopy at Outer Roof Edge)
       // ----------------------------------------------------
-      // Gutter collector at south wall aligned cleanly with canopyY
+      // Collector gutter running along the south end and outer roof edge,
+      // dropping down from after the canopy at the garden edge (X = -1.5m)
       const gutterGeo = new THREE.BoxGeometry(gWidth + 0.06, 0.07, 0.08);
       const gutterMesh = new THREE.Mesh(gutterGeo, blackSteelMat);
       gutterMesh.position.set(gMidX, canopyY - 0.035, zSouthWall + 0.04);
       canopyGroup.add(gutterMesh);
 
-      // Vertical White PVC Downpipe in the corner against the wall
-      // Look at media_1790525894123.png: Vertical pipe in the rear corner running to floor,
-      // with a 90-degree elbow at floor level and a horizontal pipe running along the base!
+      // Downpipe Hopper / Dropper Collector at the outer roof edge (after the canopy)
       const pipeRadius = 0.034; // ~68mm PVC pipe
-      const pipeCornerX = wallEdgeX + (isCarportLeft ? -0.06 : 0.06);
-      const pipeCornerZ = zSouthWall + 0.06;
-      const pipeHeight = (canopyY - 0.035) - 0.05; // from gutter down to floor Y=0.05
+      const pipeCornerX = roofEdgeX + (isCarportLeft ? -0.05 : 0.05);
+      const pipeCornerZ = zSouthWall + 0.11; // Flush against the inside face of the rear boundary wall
+      const pipeTopY = canopyY - 0.02;
+      const pipeFloorY = 0.05;
+      const pipeHeight = pipeTopY - pipeFloorY;
 
-      const vertPipeGeo = new THREE.CylinderGeometry(pipeRadius, pipeRadius, pipeHeight, 24);
+      // Collector Hopper box connecting roof edge / gutter to the downpipe
+      const hopperGeo = new THREE.BoxGeometry(0.12, 0.10, 0.12);
+      const hopperMesh = new THREE.Mesh(hopperGeo, blackSteelMat);
+      hopperMesh.position.set(pipeCornerX, pipeTopY - 0.03, pipeCornerZ);
+      canopyGroup.add(hopperMesh);
+
+      // Vertical White PVC Downpipe coming down after the canopy at the garden strip
+      const vertPipeGeo = new THREE.CylinderGeometry(pipeRadius, pipeRadius, pipeHeight - 0.08, 24);
       const vertPipe = new THREE.Mesh(vertPipeGeo, pvcPipeMat);
-      vertPipe.position.set(pipeCornerX, 0.05 + pipeHeight / 2, pipeCornerZ);
+      vertPipe.position.set(pipeCornerX, pipeFloorY + 0.08 + (pipeHeight - 0.08) / 2, pipeCornerZ);
       vertPipe.castShadow = true;
       canopyGroup.add(vertPipe);
 
-      // Pipe wall brackets
+      // Pipe wall brackets anchoring securely to the rear masonry boundary wall
       [0.6, 1.4, 2.2].forEach(py => {
         const bracketGeo = new THREE.CylinderGeometry(pipeRadius + 0.006, pipeRadius + 0.006, 0.02, 16);
         const bracket = new THREE.Mesh(bracketGeo, blackSteelMat);
@@ -368,22 +376,20 @@ export function buildHouse(scene, houseData) {
         canopyGroup.add(bracket);
       });
 
-      // 90° PVC Elbow at Floor Level
+      // 90° PVC Elbow at Floor Level turning into the garden strip
       const elbowGeo = new THREE.TorusGeometry(0.045, pipeRadius, 16, 24, Math.PI / 2);
       const elbow = new THREE.Mesh(elbowGeo, pvcPipeMat);
-      elbow.position.set(pipeCornerX, 0.05, pipeCornerZ);
-      // Rotate elbow so it turns from vertical down to horizontal towards the garden
-      elbow.rotation.z = isCarportLeft ? 0 : Math.PI;
+      elbow.position.set(pipeCornerX, pipeFloorY + 0.045, pipeCornerZ);
+      elbow.rotation.z = isCarportLeft ? Math.PI : 0;
       canopyGroup.add(elbow);
 
-      // Horizontal PVC drain pipe running along the base of the rear boundary wall
-      // exactly as seen in media_1790525894123.png!
-      const horizPipeLen = 0.85;
+      // Horizontal PVC drain pipe running along the base of the rear boundary wall in the garden strip
+      const horizPipeLen = 0.80;
       const horizPipeGeo = new THREE.CylinderGeometry(pipeRadius, pipeRadius, horizPipeLen, 24);
       const horizPipe = new THREE.Mesh(horizPipeGeo, pvcPipeMat);
       horizPipe.rotation.z = Math.PI / 2;
-      const horizX = pipeCornerX + (isCarportLeft ? -horizPipeLen / 2 - 0.04 : horizPipeLen / 2 + 0.04);
-      horizPipe.position.set(horizX, 0.05, pipeCornerZ);
+      const horizX = pipeCornerX + (isCarportLeft ? -horizPipeLen / 2 - 0.045 : horizPipeLen / 2 + 0.045);
+      horizPipe.position.set(horizX, pipeFloorY, pipeCornerZ);
       horizPipe.castShadow = true;
       canopyGroup.add(horizPipe);
 
