@@ -36,6 +36,11 @@ class App {
     this.pointer = new THREE.Vector2(-1000, -1000);
     this.screenPointer = { x: 0, y: 0 };
     this.hoveredItem = null;
+    this.activeDimLabel = null;
+
+    this.hoverDimensionGroup = new THREE.Group();
+    this.hoverDimensionGroup.name = "hoverDimensionGroup";
+    this.scene.add(this.hoverDimensionGroup);
 
     // Track mouse pointer for furniture hover inspection
     window.addEventListener('pointermove', (e) => {
@@ -270,7 +275,7 @@ class App {
     const interactables = (this.houseResult && this.houseResult.kitchenGroup && this.houseResult.kitchenGroup.userData.interactables) || [];
     if (!interactables || interactables.length === 0) {
       if (this.hoveredItem) {
-        this.ui.hideFurnitureTooltip();
+        this.clear3DDimension();
         this.hoveredItem = null;
       }
       return;
@@ -288,20 +293,112 @@ class App {
     const intersects = this.raycaster.intersectObjects(interactables, false);
     if (intersects.length > 0 && intersects[0].distance < 14.0) {
       const hit = intersects[0].object;
-      if (hit && hit.userData && hit.userData.kitchenItem) {
+      if (hit && hit.userData && hit.userData.dimInfo) {
         this.hoveredItem = hit;
-        this.ui.showFurnitureTooltip(
-          hit.userData.kitchenItem,
-          this.screenPointer,
-          this.mode === 'walk' && isPointerLocked
-        );
+        this.show3DDimension(hit.userData.dimInfo);
         return;
       }
     }
 
     if (this.hoveredItem) {
-      this.ui.hideFurnitureTooltip();
+      this.clear3DDimension();
       this.hoveredItem = null;
+    }
+  }
+
+  show3DDimension(dimInfo) {
+    if (!dimInfo || !dimInfo.p1 || !dimInfo.p2) return;
+    if (this.activeDimLabel === dimInfo.label) return; // Already displaying this line
+
+    this.activeDimLabel = dimInfo.label;
+    this.clear3DDimension();
+
+    const p1 = new THREE.Vector3(...dimInfo.p1);
+    const p2 = new THREE.Vector3(...dimInfo.p2);
+    const axis = dimInfo.axis || 'x';
+
+    // CAD dimension line: main line segment + perpendicular end ticks '|'
+    const tickLen = 0.055;
+    const points = [];
+
+    // Main line connecting p1 and p2
+    points.push(p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+
+    // End ticks '|'
+    if (axis === 'x') {
+      points.push(p1.x, p1.y, p1.z - tickLen, p1.x, p1.y, p1.z + tickLen);
+      points.push(p2.x, p2.y, p2.z - tickLen, p2.x, p2.y, p2.z + tickLen);
+    } else if (axis === 'z') {
+      points.push(p1.x - tickLen, p1.y, p1.z, p1.x + tickLen, p1.y, p1.z);
+      points.push(p2.x - tickLen, p2.y, p2.z, p2.x + tickLen, p2.y, p2.z);
+    } else {
+      points.push(p1.x - tickLen, p1.y, p1.z, p1.x + tickLen, p1.y, p1.z);
+      points.push(p2.x - tickLen, p2.y, p2.z, p2.x + tickLen, p2.y, p2.z);
+    }
+
+    const lineGeo = new THREE.BufferGeometry();
+    lineGeo.setAttribute('position', new THREE.Float32BufferAttribute(points, 3));
+    const lineMat = new THREE.LineBasicMaterial({
+      color: 0x38bdf8,
+      linewidth: 3,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.95
+    });
+    const lineMesh = new THREE.LineSegments(lineGeo, lineMat);
+    lineMesh.renderOrder = 998;
+    this.hoverDimensionGroup.add(lineMesh);
+
+    // Crisp high-resolution label sprite "|-- 200 mm --|"
+    const canvas = document.createElement('canvas');
+    canvas.width = 384;
+    canvas.height = 80;
+    const ctx = canvas.getContext('2d');
+
+    // Rounded dark pill
+    ctx.fillStyle = 'rgba(11, 15, 23, 0.90)';
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 368, 64, 12);
+    ctx.fill();
+
+    // Cyan glowing stroke
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    // Dimension label
+    ctx.font = 'bold 28px "JetBrains Mono", monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(dimInfo.label, 192, 40);
+
+    const spriteTex = new THREE.CanvasTexture(canvas);
+    const spriteMat = new THREE.SpriteMaterial({
+      map: spriteTex,
+      depthTest: false,
+      transparent: true,
+      opacity: 0.98
+    });
+    const sprite = new THREE.Sprite(spriteMat);
+    sprite.scale.set(0.68, 0.15, 1.0);
+    sprite.renderOrder = 999;
+
+    const mid = p1.clone().lerp(p2, 0.5);
+    sprite.position.set(mid.x, mid.y + 0.045, mid.z);
+    this.hoverDimensionGroup.add(sprite);
+  }
+
+  clear3DDimension() {
+    this.activeDimLabel = null;
+    while (this.hoverDimensionGroup.children.length > 0) {
+      const child = this.hoverDimensionGroup.children[0];
+      if (child.geometry) child.geometry.dispose();
+      if (child.material) {
+        if (child.material.map) child.material.map.dispose();
+        child.material.dispose();
+      }
+      this.hoverDimensionGroup.remove(child);
     }
   }
 }

@@ -144,24 +144,6 @@ export class UIManager {
         <div class="look-hint-pill">👉 Swipe screen to look around</div>
       </div>
 
-      <!-- Floating Furniture Dimension & Material Inspector Tooltip -->
-      <div id="furniture-inspector-card" style="display: none;">
-        <div class="f-inspect-header">
-          <span id="f-inspect-zone" class="f-badge">ZONE</span>
-          <span class="f-scale-tag">📐 1:1 REAL SCALE</span>
-        </div>
-        <h4 id="f-inspect-title">Furniture Item</h4>
-        <div class="f-inspect-dim-box">
-          <span class="f-dim-icon">📏</span>
-          <span id="f-inspect-dim">00 cm × 00 cm × 00 cm</span>
-        </div>
-        <div class="f-inspect-mat-row">
-          <span class="f-mat-label">Finish:</span>
-          <span id="f-inspect-mat">Material</span>
-        </div>
-        <p id="f-inspect-desc">Description</p>
-      </div>
-
       <!-- Custom Plan / Measurements Editor Modal -->
       <div id="plan-modal" class="modal-backdrop hidden">
         <div class="plan-dialog">
@@ -524,60 +506,5 @@ export class UIManager {
     this.dom.btnDay.classList.toggle('active', preset === 'day');
     this.dom.btnSunset.classList.toggle('active', preset === 'sunset');
     this.dom.btnNight.classList.toggle('active', preset === 'night');
-  }
-
-  showFurnitureTooltip(item, pointer, isWalkMode = false) {
-    if (!this.dom.furnitureCard) {
-      this.dom.furnitureCard = document.getElementById('furniture-inspector-card');
-      this.dom.fZone = document.getElementById('f-inspect-zone');
-      this.dom.fTitle = document.getElementById('f-inspect-title');
-      this.dom.fDim = document.getElementById('f-inspect-dim');
-      this.dom.fMat = document.getElementById('f-inspect-mat');
-      this.dom.fDesc = document.getElementById('f-inspect-desc');
-    }
-
-    if (!item || !this.dom.furnitureCard) return;
-
-    this.dom.fZone.innerText = item.zone || 'KITCHEN SET';
-    this.dom.fTitle.innerText = item.title;
-    this.dom.fDim.innerText = item.dimension;
-    this.dom.fMat.innerText = item.materials || 'Custom Finish';
-    this.dom.fDesc.innerText = item.description || '';
-
-    this.dom.furnitureCard.style.display = 'block';
-
-    if (isWalkMode) {
-      // In Walk mode (crosshair aimed at furniture), dock card in upper right corner
-      this.dom.furnitureCard.classList.add('docked-card');
-      this.dom.furnitureCard.style.left = '';
-      this.dom.furnitureCard.style.top = '';
-    } else {
-      // In Dollhouse mode, float near mouse pointer with edge clamping
-      this.dom.furnitureCard.classList.remove('docked-card');
-      const pad = 16;
-      let left = (pointer ? pointer.x : window.innerWidth / 2) + pad;
-      let top = (pointer ? pointer.y : window.innerHeight / 2) + pad;
-      const cardW = 320;
-      const cardH = 175;
-
-      if (left + cardW > window.innerWidth - 16) {
-        left = (pointer ? pointer.x : window.innerWidth / 2) - cardW - pad;
-      }
-      if (top + cardH > window.innerHeight - 80) {
-        top = (pointer ? pointer.y : window.innerHeight / 2) - cardH - pad;
-      }
-
-      this.dom.furnitureCard.style.left = `${Math.max(12, left)}px`;
-      this.dom.furnitureCard.style.top = `${Math.max(12, top)}px`;
-    }
-  }
-
-  hideFurnitureTooltip() {
-    if (!this.dom.furnitureCard) {
-      this.dom.furnitureCard = document.getElementById('furniture-inspector-card');
-    }
-    if (this.dom.furnitureCard) {
-      this.dom.furnitureCard.style.display = 'none';
-    }
   }
 }
