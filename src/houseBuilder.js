@@ -452,7 +452,7 @@ export function buildHouse(scene, houseData) {
 
   // Add Furnishings & Kitchen Suite
   buildFurniture(houseGroup, colliders);
-  buildKitchenSuite(houseGroup, colliders, houseData);
+  const kitchenGroup = buildKitchenSuite(houseGroup, colliders, houseData);
 
   houseGroup.add(ceilingGroup);
   houseGroup.add(dimensionGroup);
@@ -463,6 +463,7 @@ export function buildHouse(scene, houseData) {
     colliders,
     ceilingGroup,
     dimensionGroup,
+    kitchenGroup,
     rooms: houseData.rooms,
     playerSpawn: houseData.playerSpawn
   };

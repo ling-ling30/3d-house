@@ -32,6 +32,28 @@ class App {
     this.ui.setModeUI('dollhouse');
 
     this.clock = new THREE.Clock();
+    this.raycaster = new THREE.Raycaster();
+    this.pointer = new THREE.Vector2(-1000, -1000);
+    this.screenPointer = { x: 0, y: 0 };
+    this.hoveredItem = null;
+
+    // Track mouse pointer for furniture hover inspection
+    window.addEventListener('pointermove', (e) => {
+      this.pointer.x = (e.clientX / window.innerWidth) * 2 - 1;
+      this.pointer.y = -(e.clientY / window.innerHeight) * 2 + 1;
+      this.screenPointer = { x: e.clientX, y: e.clientY };
+    });
+
+    // Mobile touch support to inspect furniture on tap
+    window.addEventListener('touchstart', (e) => {
+      if (e.touches && e.touches[0]) {
+        const t = e.touches[0];
+        this.pointer.x = (t.clientX / window.innerWidth) * 2 - 1;
+        this.pointer.y = -(t.clientY / window.innerHeight) * 2 + 1;
+        this.screenPointer = { x: t.clientX, y: t.clientY };
+      }
+    }, { passive: true });
+
     this.animate = this.animate.bind(this);
     requestAnimationFrame(this.animate);
 
@@ -238,9 +260,49 @@ class App {
     }
 
     this.lighting.update(this.camera);
+    this.updateHoverInspection();
     this.ui.update();
 
     this.renderer.render(this.scene, this.camera);
+  }
+
+  updateHoverInspection() {
+    const interactables = (this.houseResult && this.houseResult.kitchenGroup && this.houseResult.kitchenGroup.userData.interactables) || [];
+    if (!interactables || interactables.length === 0) {
+      if (this.hoveredItem) {
+        this.ui.hideFurnitureTooltip();
+        this.hoveredItem = null;
+      }
+      return;
+    }
+
+    const isPointerLocked = !!document.pointerLockElement;
+    if (this.mode === 'walk' && isPointerLocked) {
+      // Raycast from center crosshair in first-person pointer-locked view
+      this.raycaster.setFromCamera(new THREE.Vector2(0, 0), this.camera);
+    } else {
+      // Raycast from mouse pointer or touch position
+      this.raycaster.setFromCamera(this.pointer, this.camera);
+    }
+
+    const intersects = this.raycaster.intersectObjects(interactables, false);
+    if (intersects.length > 0 && intersects[0].distance < 14.0) {
+      const hit = intersects[0].object;
+      if (hit && hit.userData && hit.userData.kitchenItem) {
+        this.hoveredItem = hit;
+        this.ui.showFurnitureTooltip(
+          hit.userData.kitchenItem,
+          this.screenPointer,
+          this.mode === 'walk' && isPointerLocked
+        );
+        return;
+      }
+    }
+
+    if (this.hoveredItem) {
+      this.ui.hideFurnitureTooltip();
+      this.hoveredItem = null;
+    }
   }
 }
 

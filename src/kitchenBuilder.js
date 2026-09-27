@@ -9,6 +9,7 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   const isCarportLeft = houseData.carportOnLeft !== false;
   const kitchenGroup = new THREE.Group();
   kitchenGroup.name = "kitchenSuite";
+  kitchenGroup.userData.interactables = [];
 
   // Textures
   const beigeTileTex = createGlazedBeigeTileTexture();
@@ -105,26 +106,39 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   });
 
   // Mirror coordinate transformer:
-  // If carport is on left (default), kitchen is on East side (X in [0.30, 2.50]).
-  // If mirrored, flip X coordinate: x -> -x.
   function mx(x) {
     return isCarportLeft ? x : -x;
   }
 
-  // Helper to add box mesh with shadow
-  function addBox(w, h, d, mat, x, y, z, rotY = 0) {
+  // Helper to add box mesh with shadow and optional interactive metadata
+  function addBox(w, h, d, mat, x, y, z, rotY = 0, itemData = null) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(mx(x), y, z);
     mesh.rotation.y = isCarportLeft ? rotY : -rotY;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+
+    if (itemData) {
+      mesh.userData.kitchenItem = itemData;
+      kitchenGroup.userData.interactables.push(mesh);
+    }
+
     kitchenGroup.add(mesh);
+    return mesh;
+  }
+
+  function registerItem(mesh, itemData) {
+    if (mesh && itemData) {
+      mesh.userData.kitchenItem = itemData;
+      kitchenGroup.userData.interactables.push(mesh);
+    }
     return mesh;
   }
 
   // =========================================================================
   // 1. SHORT FACING WALL (2.20m: X in [0.30, 2.50], Z = -1.15) – WET & CLEANING ZONE
+  // Total Width = 2.20m = 20cm (Buffer) + 80cm (Sink) + 60cm (Drying) + 60cm (Corner)
   // =========================================================================
   const facingWallZ = -1.15;
   const counterDepth = 0.60;
@@ -146,39 +160,49 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   // Recessed Handleless J-Pull Finger Groove along the top edge of base cabinets
   addBox(2.20, 0.035, 0.025, recessedGrooveMat, 1.40, counterBaseY - 0.02, facingWallZ + counterDepth);
 
-  // Vertical Door Shadow Lines on Short Run:
-  // Buffer door (0.30 - 0.50), Sink double door (0.50 - 1.30), Drying double drawer (1.30 - 1.90), Corner (1.90 - 2.50)
+  // Vertical Door Shadow Lines
   const shortDivX = [0.50, 0.90, 1.30, 1.90];
   shortDivX.forEach(gx => {
     addBox(0.004, cabHeight - 0.04, 0.005, recessedGrooveMat, gx, cabMidY - 0.015, facingWallZ + counterDepth + 0.002);
   });
-  // Horizontal drawer groove in drying zone (X: 1.30 to 1.90)
+  // Horizontal drawer groove in drying zone
   addBox(0.59, 0.004, 0.005, recessedGrooveMat, 1.60, cabMidY, facingWallZ + counterDepth + 0.002);
 
-  // Countertop on Short Wall (Granite Wall Buffer + Dish Drying + Corner)
-  // Sink is cut out at X in [0.50, 1.30], Z in [-1.08, -0.62]
-  // 1) Left Buffer Slab (X: 0.30 to 0.50)
-  addBox(0.20, slabThick, counterDepth, marbleMat, 0.40, counterTopY - slabThick / 2, cabZ);
-  // 2) Right Drying & Corner Slab (X: 1.30 to 1.90)
-  addBox(0.60, slabThick, counterDepth, marbleMat, 1.60, counterTopY - slabThick / 2, cabZ);
-  // 3) Back border of sink cutout (Z: -1.15 to -1.08, width 0.80)
-  addBox(0.80, slabThick, 0.07, marbleMat, 0.90, counterTopY - slabThick / 2, facingWallZ + 0.035);
-  // 4) Front border of sink cutout (Z: -0.62 to -0.55, width 0.80)
-  addBox(0.80, slabThick, 0.07, marbleMat, 0.90, counterTopY - slabThick / 2, facingWallZ + counterDepth - 0.035);
+  // --- 1A. Left Wall Buffer (20cm: X in [0.30, 0.50]) ---
+  const bufferData = {
+    title: "Left Wall Clearance Buffer",
+    zone: "Wet & Cleaning Zone",
+    dimension: "20 cm (W) × 60 cm (D) × 90 cm (H)",
+    materials: "Polished White Marble Counter + Matte Black Base",
+    description: "20 cm ergonomic clearance between the undermount sink and adjacent wall."
+  };
+  addBox(0.20, slabThick, counterDepth, marbleMat, 0.40, counterTopY - slabThick / 2, cabZ, 0, bufferData);
 
-  // --- Undermount Sink (800mm x 500mm x 254mm deep) ---
+  // --- 1B. Undermount Sink (80cm: X in [0.50, 1.30]) ---
   const sinkCenterX = 0.90;
   const sinkCenterZ = facingWallZ + 0.35; // Z = -0.80
   const sinkDepthM = 0.254; // 25.4 cm depth
   const basinFloorY = counterTopY - sinkDepthM; // ~0.646
 
-  // Basin bottom floor
-  addBox(0.76, 0.015, 0.44, sinkMetalMat, sinkCenterX, basinFloorY, sinkCenterZ);
-  // Basin walls (inside cutout)
-  addBox(0.76, sinkDepthM, 0.015, sinkMetalMat, sinkCenterX, basinFloorY + sinkDepthM / 2, sinkCenterZ - 0.22); // back
-  addBox(0.76, sinkDepthM, 0.015, sinkMetalMat, sinkCenterX, basinFloorY + sinkDepthM / 2, sinkCenterZ + 0.22); // front
-  addBox(0.015, sinkDepthM, 0.44, sinkMetalMat, sinkCenterX - 0.38, basinFloorY + sinkDepthM / 2, sinkCenterZ); // left
-  addBox(0.015, sinkDepthM, 0.44, sinkMetalMat, sinkCenterX + 0.38, basinFloorY + sinkDepthM / 2, sinkCenterZ); // right
+  const sinkData = {
+    title: "Undermount Sink Basin & Faucet",
+    zone: "Wet & Cleaning Zone",
+    dimension: "800 mm (W) × 500 mm (D) × 254 mm (Deep)",
+    materials: "Gunmetal Stainless Basin + Matte Black Gooseneck Faucet",
+    description: "Deep undermount single basin with basket strainer drain and arching 360° mixer faucet."
+  };
+
+  // Back border of sink cutout
+  addBox(0.80, slabThick, 0.07, marbleMat, 0.90, counterTopY - slabThick / 2, facingWallZ + 0.035);
+  // Front border of sink cutout
+  addBox(0.80, slabThick, 0.07, marbleMat, 0.90, counterTopY - slabThick / 2, facingWallZ + counterDepth - 0.035);
+
+  // Basin bottom floor & walls
+  const basinBottom = addBox(0.76, 0.015, 0.44, sinkMetalMat, sinkCenterX, basinFloorY, sinkCenterZ, 0, sinkData);
+  addBox(0.76, sinkDepthM, 0.015, sinkMetalMat, sinkCenterX, basinFloorY + sinkDepthM / 2, sinkCenterZ - 0.22);
+  addBox(0.76, sinkDepthM, 0.015, sinkMetalMat, sinkCenterX, basinFloorY + sinkDepthM / 2, sinkCenterZ + 0.22);
+  addBox(0.015, sinkDepthM, 0.44, sinkMetalMat, sinkCenterX - 0.38, basinFloorY + sinkDepthM / 2, sinkCenterZ);
+  addBox(0.015, sinkDepthM, 0.44, sinkMetalMat, sinkCenterX + 0.38, basinFloorY + sinkDepthM / 2, sinkCenterZ);
 
   // Drain strainer in sink
   const drainGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.005, 24);
@@ -187,57 +211,66 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   drainMesh.receiveShadow = true;
   kitchenGroup.add(drainMesh);
 
-  // Faucet: Arching matte black gooseneck faucet
-  const faucetBaseGeo = new THREE.CylinderGeometry(0.026, 0.030, 0.05, 20);
-  const faucetBase = new THREE.Mesh(faucetBaseGeo, faucetMat);
+  // Arching matte black gooseneck faucet
+  const faucetData = {
+    title: "Matte Black Gooseneck Faucet",
+    zone: "Wet & Cleaning Zone",
+    dimension: "20 cm (Reach) × 38 cm (Height above counter)",
+    materials: "Solid Brass Alloy with Electroplated Matte Black Finish",
+    description: "High-arc swivel gooseneck spout with aerator nozzle and single-lever ceramic mixer control."
+  };
+  const faucetBase = new THREE.Mesh(new THREE.CylinderGeometry(0.026, 0.030, 0.05, 20), faucetMat);
   faucetBase.position.set(mx(sinkCenterX), counterTopY + 0.025, facingWallZ + 0.08);
+  registerItem(faucetBase, faucetData);
   kitchenGroup.add(faucetBase);
 
-  // Faucet upright stem
-  const stemGeo = new THREE.CylinderGeometry(0.014, 0.014, 0.22, 16);
-  const stem = new THREE.Mesh(stemGeo, faucetMat);
+  const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.22, 16), faucetMat);
   stem.position.set(mx(sinkCenterX), counterTopY + 0.05 + 0.11, facingWallZ + 0.08);
+  registerItem(stem, faucetData);
   kitchenGroup.add(stem);
 
-  // Gooseneck arch (Torus segment)
   const archGeo = new THREE.TorusGeometry(0.09, 0.014, 12, 24, Math.PI);
   const arch = new THREE.Mesh(archGeo, faucetMat);
   arch.rotation.z = Math.PI / 2;
   arch.rotation.y = isCarportLeft ? Math.PI / 2 : -Math.PI / 2;
   arch.position.set(mx(sinkCenterX), counterTopY + 0.27, facingWallZ + 0.08 + (isCarportLeft ? 0.09 : -0.09));
+  registerItem(arch, faucetData);
   kitchenGroup.add(arch);
 
-  // Aerator nozzle head
-  const nozzleGeo = new THREE.CylinderGeometry(0.016, 0.013, 0.06, 16);
-  const nozzle = new THREE.Mesh(nozzleGeo, faucetMat);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.013, 0.06, 16), faucetMat);
   nozzle.position.set(mx(sinkCenterX), counterTopY + 0.24, facingWallZ + 0.26);
+  registerItem(nozzle, faucetData);
   kitchenGroup.add(nozzle);
 
-  // Single-lever side mixer handle
-  const leverHubGeo = new THREE.CylinderGeometry(0.015, 0.015, 0.03, 16);
-  const leverHub = new THREE.Mesh(leverHubGeo, faucetMat);
+  const leverHub = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.015, 0.03, 16), faucetMat);
   leverHub.rotation.z = Math.PI / 2;
   leverHub.position.set(mx(sinkCenterX + 0.04), counterTopY + 0.09, facingWallZ + 0.08);
   kitchenGroup.add(leverHub);
 
-  const leverStickGeo = new THREE.CylinderGeometry(0.005, 0.005, 0.08, 12);
-  const leverStick = new THREE.Mesh(leverStickGeo, faucetMat);
+  const leverStick = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.08, 12), faucetMat);
   leverStick.position.set(mx(sinkCenterX + 0.055), counterTopY + 0.13, facingWallZ + 0.08);
   kitchenGroup.add(leverStick);
 
-  // --- Dish Drying Space (~60cm: X in [1.30, 1.90]) ---
-  // Tiered matte black dish drying rack with drain tray and plates
+  // --- 1C. Dish Drying Space (60cm: X in [1.30, 1.90]) ---
   const rackX = 1.60;
   const rackZ = facingWallZ + 0.32;
+  const dryingData = {
+    title: "Dish Drying Station & Hanging Rail",
+    zone: "Wet & Cleaning Zone",
+    dimension: "60 cm (W) × 60 cm (D) × 24 cm (Rack Height)",
+    materials: "Matte Black Wireframe + Drainage Tray + Porcelain Dishes",
+    description: "Dedicated wet dishware management space without dishwasher, tiered rack and wall rail with S-hooks."
+  };
+  addBox(0.60, slabThick, counterDepth, marbleMat, 1.60, counterTopY - slabThick / 2, cabZ, 0, dryingData);
+
   // Drain tray with lip
-  addBox(0.48, 0.012, 0.36, matteBlackMat, rackX, counterTopY + 0.006, rackZ);
-  // Wireframe rack legs & top frame
+  addBox(0.48, 0.012, 0.36, matteBlackMat, rackX, counterTopY + 0.006, rackZ, 0, dryingData);
+  // Wireframe rack
   const wireMat = new THREE.MeshStandardMaterial({ color: 0x1f1f1f, roughness: 0.4, metalness: 0.8 });
   addBox(0.48, 0.01, 0.01, wireMat, rackX, counterTopY + 0.18, rackZ - 0.17);
   addBox(0.48, 0.01, 0.01, wireMat, rackX, counterTopY + 0.18, rackZ + 0.17);
   addBox(0.01, 0.01, 0.34, wireMat, rackX - 0.235, counterTopY + 0.18, rackZ);
   addBox(0.01, 0.01, 0.34, wireMat, rackX + 0.235, counterTopY + 0.18, rackZ);
-  // 4 corner rack vertical posts
   [[-0.235, -0.17], [0.235, -0.17], [-0.235, 0.17], [0.235, 0.17]].forEach(([dx, dz]) => {
     addBox(0.012, 0.18, 0.012, wireMat, rackX + dx, counterTopY + 0.09, rackZ + dz);
   });
@@ -245,231 +278,263 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   const plateMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.15 });
   for (let pi = 0; pi < 6; pi++) {
     const ppx = rackX - 0.15 + pi * 0.05;
-    const plateGeo = new THREE.CylinderGeometry(0.11, 0.11, 0.008, 24);
-    const plate = new THREE.Mesh(plateGeo, plateMat);
+    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.008, 24), plateMat);
     plate.rotation.z = Math.PI / 2;
     plate.position.set(mx(ppx), counterTopY + 0.13, rackZ - 0.04);
     plate.castShadow = true;
+    registerItem(plate, dryingData);
     kitchenGroup.add(plate);
   }
-  // Side cutlery holder cup
-  addBox(0.08, 0.12, 0.10, matteBlackMat, rackX + 0.18, counterTopY + 0.07, rackZ + 0.10);
+  // Cutlery holder cup
+  addBox(0.08, 0.12, 0.10, matteBlackMat, rackX + 0.18, counterTopY + 0.07, rackZ + 0.10, 0, dryingData);
 
-  // Wall-mounted matte black hanging rail rod with S-hooks above drying zone
+  // Wall-mounted matte black hanging rail rod with S-hooks
   const rodY = counterTopY + 0.42; // Y = 1.32m
-  addBox(0.65, 0.014, 0.014, faucetMat, 1.60, rodY, facingWallZ + 0.035);
-  // Mounting brackets
+  addBox(0.65, 0.014, 0.014, faucetMat, 1.60, rodY, facingWallZ + 0.035, 0, dryingData);
   addBox(0.02, 0.03, 0.035, faucetMat, 1.32, rodY, facingWallZ + 0.02);
   addBox(0.02, 0.03, 0.035, faucetMat, 1.88, rodY, facingWallZ + 0.02);
-  // S-Hooks & hanging tools
   for (let hi = 0; hi < 3; hi++) {
     const hx = 1.45 + hi * 0.12;
     addBox(0.006, 0.04, 0.006, stainlessMat, hx, rodY - 0.025, facingWallZ + 0.035);
-    // Utensil spatula / ladle
     addBox(0.02, 0.18, 0.008, stainlessMat, hx, rodY - 0.12, facingWallZ + 0.038);
   }
 
-  // --- Backsplash on Short Facing Wall ---
-  // Glazed beige square ceramic tiles from counterTopY (0.90) to upper cabinet underside (1.55)
+  // --- 1D. Backsplash on Short Facing Wall ---
+  const backsplashData = {
+    title: "Glazed Beige Square Ceramic Backsplash",
+    zone: "Wall Finishes",
+    dimension: "2.20 m (Facing Wall) + 2.50 m (Long Wall) × 65 cm (Height)",
+    materials: "Warm Glazed 10cm × 10cm Square Ceramic Tiles",
+    description: "Water-resistant, heat-reflective glazed ceramic backsplash illuminated by warm LED lighting."
+  };
   const backsplashHeight = 0.65;
   const backsplashMidY = counterTopY + backsplashHeight / 2; // 1.225
-  addBox(2.20, backsplashHeight, 0.015, backsplashMat, 1.40, backsplashMidY, facingWallZ + 0.008);
+  addBox(2.20, backsplashHeight, 0.015, backsplashMat, 1.40, backsplashMidY, facingWallZ + 0.008, 0, backsplashData);
 
-  // --- Upper Cabinetry on Short Facing Wall ---
-  // Modern handleless matte black upper cabinets (Depth: 0.35m, Height: 0.80m from Y=1.55 to Y=2.35)
+  // --- 1E. Upper Cabinets on Short Facing Wall ---
   const upperDepth = 0.35;
   const upperHeight = 0.80;
   const upperBottomY = 1.55;
   const upperMidY = upperBottomY + upperHeight / 2; // 1.95
   const upperZ_short = facingWallZ + upperDepth / 2;
 
-  // Upper cabinets from X: 0.40 to 1.90 (width 1.50m)
-  addBox(1.50, upperHeight, upperDepth, matteBlackMat, 1.15, upperMidY, upperZ_short);
-  // Vertical door gaps (3 doors, 50cm each: 0.40, 0.90, 1.40, 1.90)
+  const upperCabData = {
+    title: "Handleless Matte Black Upper Cabinets",
+    zone: "Upper Storage",
+    dimension: "150 cm (W) × 35 cm (D) × 80 cm (H)",
+    materials: "Matte Black Satin Finish with Bottom Finger Groove",
+    description: "Sleek modern overhead storage with recessed finger grip and concealed soft-close hinges."
+  };
+  addBox(1.50, upperHeight, upperDepth, matteBlackMat, 1.15, upperMidY, upperZ_short, 0, upperCabData);
   [0.90, 1.40].forEach(gx => {
     addBox(0.004, upperHeight - 0.04, 0.005, recessedGrooveMat, gx, upperMidY, upperZ_short + upperDepth / 2 + 0.002);
   });
-  // Recessed finger-grip channel under upper cabinets
   addBox(1.50, 0.02, 0.02, recessedGrooveMat, 1.15, upperBottomY + 0.01, upperZ_short + upperDepth / 2 - 0.02);
 
   // Warm LED Under-Cabinet Strip Light along Short Run
-  const ledStripShort = addBox(1.48, 0.01, 0.02, ledEmissiveMat, 1.15, upperBottomY - 0.005, upperZ_short + upperDepth / 2 - 0.03);
-  const ledLightShort = new THREE.PointLight(0xffdfa0, 0.9, 2.5, 1.5);
+  const ledData = {
+    title: "Warm LED Under-Cabinet Strip Light",
+    zone: "Architectural Lighting",
+    dimension: "Full Length of Upper Cabinets at Y = 1.53 m",
+    materials: "2700K Warm Golden LED Linear Strip (Low Energy)",
+    description: "Concealed under-cabinet task lighting casting warm glow across the beige tiles and marble counter."
+  };
+  addBox(1.48, 0.01, 0.02, ledEmissiveMat, 1.15, upperBottomY - 0.005, upperZ_short + upperDepth / 2 - 0.03, 0, ledData);
+  const ledLightShort = new THREE.PointLight(0xffdfa0, 0.85, 2.5, 1.5);
   ledLightShort.position.set(mx(1.15), upperBottomY - 0.05, facingWallZ + 0.20);
   kitchenGroup.add(ledLightShort);
 
 
   // =========================================================================
-  // 2. LONG RIGHT WALL (3.30m: X = 2.50, Z in [-1.15, 2.15]) – COOKING, PREP & STORAGE ZONE
+  // 2. LONG RIGHT WALL (3.20m: X = 2.50, Z in [-1.15, 2.05]) – EXACT TO HOUSE SCALE
+  // Breakdown along Z:
+  // - Corner: 60 cm (Z: -1.15 to -0.55)
+  // - Prep Buffer: 50 cm (Z: -0.55 to -0.05)
+  // - Cooking Station (Modena Hob): 73 cm (Z: -0.05 to 0.68)
+  // - Microwave & Oak Tower: 40 cm (Z: 0.68 to 1.08)
+  // - Transition Buffer: 27 cm (Z: 1.08 to 1.35)
+  // - Refrigerator Enclosure: 70 cm (Z: 1.35 to 2.05) -> Flush with Bedroom 1 wall!
+  // Sum = 60 + 50 + 73 + 40 + 27 + 70 = 320 cm = 3.20m EXACT!
   // =========================================================================
   const longWallX = 2.50;
   const baseMidX = longWallX - counterDepth / 2; // 2.20
   const plinthMidX = longWallX - (counterDepth - 0.05) / 2 - 0.01;
 
-  // L-junction seamless corner countertop slab (X in [1.90, 2.50], Z in [-1.15, -0.55])
-  addBox(counterDepth, slabThick, counterDepth, marbleMat, baseMidX, counterTopY - slabThick / 2, facingWallZ + counterDepth / 2);
+  // --- 2A. L-Junction Corner Base Intersection (60cm x 60cm: Z in [-1.15, -0.55]) ---
+  const cornerData = {
+    title: "L-Junction Base Corner Intersection",
+    zone: "Corner Connection",
+    dimension: "60 cm × 60 cm (Square Corner Base Unit)",
+    materials: "Polished White Marble Top + Matte Black Base",
+    description: "Seamless 90-degree corner intersection connecting the wet sink wall to the cooking run."
+  };
+  addBox(counterDepth, slabThick, counterDepth, marbleMat, baseMidX, counterTopY - slabThick / 2, facingWallZ + counterDepth / 2, 0, cornerData);
 
-  // --- Prep Buffer (50cm: Z in [-0.55, -0.05]) ---
-  // Base cabinet carcass & door
-  addBox(counterDepth - 0.02, cabHeight, 0.50, matteBlackMat, baseMidX, cabMidY, -0.30);
-  addBox(counterDepth - 0.06, plinthHeight, 0.50, plinthMat, plinthMidX, plinthHeight / 2, -0.30);
-  addBox(0.025, 0.035, 0.50, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, -0.30);
-  // Countertop slab (uninterrupted white marble)
-  addBox(counterDepth, slabThick, 0.50, marbleMat, baseMidX, counterTopY - slabThick / 2, -0.30);
+  // --- 2B. Prep Buffer (50cm: Z in [-0.55, -0.05]) ---
+  const prepZ = -0.30;
+  const prepLen = 0.50;
+  const prepData = {
+    title: "Food Preparation Counter Buffer",
+    zone: "Cooking, Prep & Storage Zone",
+    dimension: "50 cm (W) × 60 cm (D) × 90 cm (H)",
+    materials: "Polished White Marble + Solid Oak End-Grain Chopping Board",
+    description: "Uninterrupted food preparation zone with wooden prep board and ceramic utensil crock."
+  };
+  addBox(counterDepth - 0.02, cabHeight, prepLen, matteBlackMat, baseMidX, cabMidY, prepZ);
+  addBox(counterDepth - 0.06, plinthHeight, prepLen, plinthMat, plinthMidX, plinthHeight / 2, prepZ);
+  addBox(0.025, 0.035, prepLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, prepZ);
+  addBox(counterDepth, slabThick, prepLen, marbleMat, baseMidX, counterTopY - slabThick / 2, prepZ, 0, prepData);
 
-  // Prep accessories: Solid end-grain oak chopping board + ceramic utensil crock
-  const boardX = longWallX - 0.32;
-  const boardZ = -0.30;
-  addBox(0.32, 0.03, 0.38, oakMat, boardX, counterTopY + 0.015, boardZ);
+  // Prep accessories
+  addBox(0.32, 0.03, 0.38, oakMat, longWallX - 0.32, counterTopY + 0.015, prepZ, 0, prepData);
 
-  const crockGeo = new THREE.CylinderGeometry(0.055, 0.05, 0.14, 20);
-  const crockMesh = new THREE.Mesh(crockGeo, new THREE.MeshStandardMaterial({ color: 0xded8cc, roughness: 0.3 }));
+  const crockMesh = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.055, 0.05, 0.14, 20),
+    new THREE.MeshStandardMaterial({ color: 0xded8cc, roughness: 0.3 })
+  );
   crockMesh.position.set(mx(longWallX - 0.16), counterTopY + 0.07, -0.45);
+  registerItem(crockMesh, prepData);
   kitchenGroup.add(crockMesh);
-  // Wooden spoons in crock
   for (let si = 0; si < 3; si++) {
-    const spoonGeo = new THREE.CylinderGeometry(0.006, 0.006, 0.22, 10);
-    const spoon = new THREE.Mesh(spoonGeo, oakMat);
+    const spoon = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.22, 10), oakMat);
     spoon.rotation.x = 0.15 * (si - 1);
     spoon.rotation.z = (isCarportLeft ? 1 : -1) * 0.18;
     spoon.position.set(mx(longWallX - 0.16 + (si - 1) * 0.015), counterTopY + 0.15, -0.45 + (si - 1) * 0.015);
     kitchenGroup.add(spoon);
   }
 
-  // --- Cooking Station (75cm: Z in [-0.05, 0.70]) ---
-  const cookZ = 0.325; // center of cooking zone
-  addBox(counterDepth - 0.02, cabHeight, 0.75, matteBlackMat, baseMidX, cabMidY, cookZ);
-  addBox(counterDepth - 0.06, plinthHeight, 0.75, plinthMat, plinthMidX, plinthHeight / 2, cookZ);
-  addBox(0.025, 0.035, 0.75, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, cookZ);
-  // 3 Deep pull-out drawers for pots and pans with horizontal finger grooves
+  // --- 2C. Cooking Station (73cm: Z in [-0.05, 0.68]) ---
+  const cookLen = 0.73;
+  const cookZ = (-0.05 + 0.68) / 2; // 0.315
+  const cookingData = {
+    title: "Cooking Station: Modena 2-Burner Gas Hob & Deep Drawers",
+    zone: "Cooking, Prep & Storage Zone",
+    dimension: "730 mm (W) × 600 mm (D) × 900 mm (H)",
+    materials: "Modena Tempered Glass Hob + 3 Deep Pull-out Drawers",
+    description: "Modena 730×420mm 2-burner gas hob (660×360mm cut-out) over 3 deep cookware storage drawers."
+  };
+  addBox(counterDepth - 0.02, cabHeight, cookLen, matteBlackMat, baseMidX, cabMidY, cookZ);
+  addBox(counterDepth - 0.06, plinthHeight, cookLen, plinthMat, plinthMidX, plinthHeight / 2, cookZ);
+  addBox(0.025, 0.035, cookLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, cookZ);
+  // 3 Deep drawers with horizontal shadow lines
   const drawerY = [plinthHeight + cabHeight * 0.33, plinthHeight + cabHeight * 0.66];
   drawerY.forEach(dy => {
-    addBox(0.005, 0.004, 0.74, recessedGrooveMat, longWallX - counterDepth - 0.002, dy, cookZ);
+    addBox(0.005, 0.004, cookLen - 0.01, recessedGrooveMat, longWallX - counterDepth - 0.002, dy, cookZ);
   });
-  // Countertop slab under hob
-  addBox(counterDepth, slabThick, 0.75, marbleMat, baseMidX, counterTopY - slabThick / 2, cookZ);
+  addBox(counterDepth, slabThick, cookLen, marbleMat, baseMidX, counterTopY - slabThick / 2, cookZ, 0, cookingData);
 
-  // Modena 2-Burner Black Tempered Glass Gas Hob (730mm x 420mm)
-  const hobDepthZ = 0.73; // along wall
-  const hobWidthX = 0.42; // depth into room
+  // Modena 2-Burner Gas Hob (730mm x 420mm)
+  const hobDepthZ = 0.73;
+  const hobWidthX = 0.42;
   const hobX = longWallX - 0.32;
   const hobZ = cookZ;
-  // Tempered glass plate with beveled rim
-  addBox(hobWidthX, 0.012, hobDepthZ, glassHobMat, hobX, counterTopY + 0.006, hobZ);
+  addBox(hobWidthX, 0.012, hobDepthZ, glassHobMat, hobX, counterTopY + 0.006, hobZ, 0, cookingData);
 
   // 2 Dual-Ring Gas Burners with Cast Iron Trivets
-  const burnerZOffsets = [-0.19, 0.19];
-  burnerZOffsets.forEach(bz => {
+  [-0.19, 0.19].forEach(bz => {
     const curBZ = hobZ + bz;
-    // Brass burner head
-    const burnerRingGeo = new THREE.CylinderGeometry(0.058, 0.062, 0.014, 24);
-    const burnerRing = new THREE.Mesh(burnerRingGeo, brassBurnerMat);
+    const burnerRing = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.062, 0.014, 24), brassBurnerMat);
     burnerRing.position.set(mx(hobX), counterTopY + 0.019, curBZ);
+    registerItem(burnerRing, cookingData);
     kitchenGroup.add(burnerRing);
 
-    const centerCapGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.018, 20);
-    const centerCap = new THREE.Mesh(centerCapGeo, castIronMat);
+    const centerCap = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.018, 20), castIronMat);
     centerCap.position.set(mx(hobX), counterTopY + 0.021, curBZ);
+    registerItem(centerCap, cookingData);
     kitchenGroup.add(centerCap);
 
-    // Heavy Cast Iron Trivet (4 prongs pan support)
-    const trivetFrameGeo = new THREE.BoxGeometry(0.24, 0.016, 0.24);
-    const trivetEdgeMat = castIronMat;
-    // Cross prongs
-    addBox(0.24, 0.018, 0.022, trivetEdgeMat, hobX, counterTopY + 0.025, curBZ);
-    addBox(0.022, 0.018, 0.24, trivetEdgeMat, hobX, counterTopY + 0.025, curBZ);
+    addBox(0.24, 0.018, 0.022, castIronMat, hobX, counterTopY + 0.025, curBZ, 0, cookingData);
+    addBox(0.022, 0.018, 0.24, castIronMat, hobX, counterTopY + 0.025, curBZ, 0, cookingData);
   });
 
-  // Front Control Knobs (Rotary dials)
-  const knobZOffsets = [-0.07, 0.07];
-  knobZOffsets.forEach(kz => {
-    const knobBaseGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.004, 16);
-    const knobBase = new THREE.Mesh(knobBaseGeo, stainlessMat);
+  // Front Control Knobs
+  [-0.07, 0.07].forEach(kz => {
+    const knobBase = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.004, 16), stainlessMat);
     knobBase.position.set(mx(hobX - 0.15), counterTopY + 0.014, hobZ + kz);
     kitchenGroup.add(knobBase);
 
-    const knobDialGeo = new THREE.CylinderGeometry(0.016, 0.016, 0.016, 16);
-    const knobDial = new THREE.Mesh(knobDialGeo, matteBlackMat);
+    const knobDial = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.016, 16), matteBlackMat);
     knobDial.position.set(mx(hobX - 0.15), counterTopY + 0.022, hobZ + kz);
+    registerItem(knobDial, cookingData);
     kitchenGroup.add(knobDial);
   });
 
-  // Slimline Range Hood Flush Under Upper Cabinets (Above Hob, Y = 1.55m)
+  // Slimline Range Hood Flush Under Upper Cabinets (Y = 1.55m)
+  const hoodData = {
+    title: "Integrated Slimline Range Hood",
+    zone: "Cooking, Prep & Storage Zone",
+    dimension: "730 mm (W) × 430 mm (D) × 60 mm (H)",
+    materials: "Stainless Steel Body with Aluminum Grease Baffle Filters",
+    description: "Flush integrated extraction hood directly above the Modena 2-burner hob with LED task lighting."
+  };
   const hoodY = 1.55;
   const hoodDepthX = upperDepth + 0.08; // 0.43m
   const hoodMidX = longWallX - hoodDepthX / 2;
-  // Hood body
-  addBox(hoodDepthX, 0.06, 0.75, stainlessMat, hoodMidX, hoodY + 0.03, cookZ);
-  // Metallic grease baffle filters underneath
-  const filterMat = new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4, metalness: 0.9 });
-  addBox(hoodDepthX - 0.04, 0.008, 0.70, filterMat, hoodMidX, hoodY - 0.002, cookZ);
+  addBox(hoodDepthX, 0.06, cookLen, stainlessMat, hoodMidX, hoodY + 0.03, cookZ, 0, hoodData);
+  addBox(hoodDepthX - 0.04, 0.008, cookLen - 0.04, new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4, metalness: 0.9 }), hoodMidX, hoodY - 0.002, cookZ, 0, hoodData);
 
-  // --- Microwave & Open Display Tower (40cm: Z in [0.70, 1.10]) ---
-  // Warm natural oak multi-tier shelving unit from counter to top (Y: 0.90 to 2.35m)
-  const towerZ = 0.90; // center of 40cm unit
-  const towerDepthX = counterDepth; // 0.60m base, 0.35m upper
-  // Base section under microwave
-  addBox(counterDepth - 0.02, cabHeight, 0.40, matteBlackMat, baseMidX, cabMidY, towerZ);
-  addBox(counterDepth - 0.06, plinthHeight, 0.40, plinthMat, plinthMidX, plinthHeight / 2, towerZ);
-  addBox(0.025, 0.035, 0.40, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, towerZ);
-  addBox(counterDepth, slabThick, 0.40, marbleMat, baseMidX, counterTopY - slabThick / 2, towerZ);
+  // --- 2D. Microwave & Open Display Tower (40cm: Z in [0.68, 1.08]) ---
+  const towerZ = (0.68 + 1.08) / 2; // 0.88m
+  const towerLen = 0.40;
+  const towerData = {
+    title: "Natural Oak Microwave & Display Tower",
+    zone: "Cooking, Prep & Storage Zone",
+    dimension: "40 cm (W) × 38 cm (D) × 145 cm (Height above counter, up to 2.35m)",
+    materials: "Solid Natural Honey Oak Wood + Built-in Microwave",
+    description: "Eye-level alcove housing digital microwave oven, topped with display shelves for ceramic jars and plant."
+  };
+  addBox(counterDepth - 0.02, cabHeight, towerLen, matteBlackMat, baseMidX, cabMidY, towerZ);
+  addBox(counterDepth - 0.06, plinthHeight, towerLen, plinthMat, plinthMidX, plinthHeight / 2, towerZ);
+  addBox(0.025, 0.035, towerLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, towerZ);
+  addBox(counterDepth, slabThick, towerLen, marbleMat, baseMidX, counterTopY - slabThick / 2, towerZ, 0, towerData);
 
-  // Natural Warm Oak Shelving Tower (Y: 0.90 to 2.35m, depth 0.38m)
+  // Oak Vertical Panels & Shelves
   const oakDepthX = 0.38;
   const oakMidX = longWallX - oakDepthX / 2;
   const towerTotalH = 2.35 - counterTopY; // 1.45m
-  // Side vertical oak panels
-  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 0.70 + 0.0125);
-  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 1.10 - 0.0125);
-  // Back oak lining panel
-  addBox(0.018, towerTotalH, 0.38, oakMat, longWallX - 0.01, counterTopY + towerTotalH / 2, towerZ);
+  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 0.68 + 0.0125, 0, towerData);
+  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 1.08 - 0.0125, 0, towerData);
+  addBox(0.018, towerTotalH, 0.38, oakMat, longWallX - 0.01, counterTopY + towerTotalH / 2, towerZ, 0, towerData);
 
-  // Horizontal Oak Shelves:
-  // 1) Microwave shelf floor at Y = 1.05m
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.05, towerZ);
-  // 2) Microwave top shelf / intermediate display at Y = 1.48m
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.48, towerZ);
-  // 3) Upper display shelf at Y = 1.90m
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.90, towerZ);
-  // 4) Top crown shelf at Y = 2.35m
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 2.35, towerZ);
+  // Shelves
+  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.05, towerZ, 0, towerData);
+  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.48, towerZ, 0, towerData);
+  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.90, towerZ, 0, towerData);
+  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 2.35, towerZ, 0, towerData);
 
-  // Built-in Microwave in the Dedicated Eye-Level Alcove (Y in [1.07, 1.46])
-  const microW = 0.34; // into room
+  // Microwave Oven
+  const microData = {
+    title: "Built-In Modern Microwave Oven",
+    zone: "Appliances",
+    dimension: "34 cm (W) × 34 cm (D) × 32 cm (H)",
+    materials: "Matte Black Steel + Smoked Glass Door + Digital Display",
+    description: "Dedicated eye-level microwave with digital LED timer and quick-touch keypad."
+  };
+  const microW = 0.34;
   const microH = 0.32;
-  const microD = 0.34; // along Z
+  const microD = 0.34;
   const microY = 1.05 + 0.0125 + microH / 2;
   const microX = longWallX - 0.04 - microW / 2;
-  // Microwave matte black chassis
-  addBox(microW, microH, microD, matteBlackMat, microX, microY, towerZ);
-  // Smoked glass door
-  addBox(0.01, microH - 0.04, microD * 0.68, smokedGlassMat, microX - microW / 2 - 0.005, microY, towerZ - 0.04);
-  // Stainless pull handle
+  addBox(microW, microH, microD, matteBlackMat, microX, microY, towerZ, 0, microData);
+  addBox(0.01, microH - 0.04, microD * 0.68, smokedGlassMat, microX - microW / 2 - 0.005, microY, towerZ - 0.04, 0, microData);
   addBox(0.012, microH * 0.70, 0.012, stainlessMat, microX - microW / 2 - 0.015, microY, towerZ + 0.07);
-  // Digital LED Display & Keypad panel
-  const displayMat = new THREE.MeshBasicMaterial({ color: 0x00ffaa });
-  addBox(0.008, 0.04, 0.08, displayMat, microX - microW / 2 - 0.005, microY + 0.09, towerZ + 0.11);
-  addBox(0.008, 0.12, 0.08, matteBlackMat, microX - microW / 2 - 0.005, microY - 0.02, towerZ + 0.11);
+  addBox(0.008, 0.04, 0.08, new THREE.MeshBasicMaterial({ color: 0x00ffaa }), microX - microW / 2 - 0.005, microY + 0.09, towerZ + 0.11);
 
-  // Open Shelving Decor:
-  // Ceramic jars on Y = 1.48 shelf
+  // Decorative Jars & Trailing Plant
   for (let ji = 0; ji < 2; ji++) {
-    const jarGeo = new THREE.CylinderGeometry(0.04, 0.045, 0.12, 16);
-    const jarMesh = new THREE.Mesh(jarGeo, new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.3 }));
+    const jarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.3 }));
     jarMesh.position.set(mx(oakMidX), 1.48 + 0.0125 + 0.06, towerZ - 0.08 + ji * 0.16);
+    registerItem(jarMesh, towerData);
     kitchenGroup.add(jarMesh);
-    // Wooden lid
-    const lidGeo = new THREE.CylinderGeometry(0.043, 0.043, 0.018, 16);
-    const lidMesh = new THREE.Mesh(lidGeo, oakMat);
+    const lidMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.018, 16), oakMat);
     lidMesh.position.set(mx(oakMidX), 1.48 + 0.0125 + 0.125, towerZ - 0.08 + ji * 0.16);
     kitchenGroup.add(lidMesh);
   }
-  // Potted trailing pothos plant on upper shelf (Y = 1.90)
-  const potGeo = new THREE.CylinderGeometry(0.06, 0.045, 0.10, 16);
-  const potMesh = new THREE.Mesh(potGeo, new THREE.MeshStandardMaterial({ color: 0xd4cdc5, roughness: 0.5 }));
+
+  const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.045, 0.10, 16), new THREE.MeshStandardMaterial({ color: 0xd4cdc5, roughness: 0.5 }));
   potMesh.position.set(mx(oakMidX), 1.90 + 0.0125 + 0.05, towerZ);
+  registerItem(potMesh, towerData);
   kitchenGroup.add(potMesh);
-  // Trailing green leaves
   const leafMat = new THREE.MeshStandardMaterial({ color: 0x3b7a42, roughness: 0.6 });
   for (let li = 0; li < 8; li++) {
     const leafGeo = new THREE.SphereGeometry(0.035, 8, 8);
@@ -485,89 +550,89 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     kitchenGroup.add(leaf);
   }
 
-  // --- Transition Buffer (37cm: Z in [1.10, 1.47]) ---
-  const transZ = 1.285;
-  const transLen = 0.37;
+  // --- 2E. Transition Buffer (27cm: Z in [1.08, 1.35]) ---
+  const transZ = (1.08 + 1.35) / 2; // 1.215m
+  const transLen = 0.27; // 27cm calibrated to fit 3.2m wall
+  const transData = {
+    title: "Transition Counter Landing Buffer",
+    zone: "Cooking, Prep & Storage Zone",
+    dimension: "27 cm (W) × 60 cm (D) × 90 cm (H)",
+    materials: "Polished White Marble Top + Matte Black Base",
+    description: "Landing counter buffer for plating food and resting items between cooking/microwave and cold storage."
+  };
   addBox(counterDepth - 0.02, cabHeight, transLen, matteBlackMat, baseMidX, cabMidY, transZ);
   addBox(counterDepth - 0.06, plinthHeight, transLen, plinthMat, plinthMidX, plinthHeight / 2, transZ);
   addBox(0.025, 0.035, transLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, transZ);
-  // Uninterrupted marble landing countertop
-  addBox(counterDepth, slabThick, transLen, marbleMat, baseMidX, counterTopY - slabThick / 2, transZ);
+  addBox(counterDepth, slabThick, transLen, marbleMat, baseMidX, counterTopY - slabThick / 2, transZ, 0, transData);
 
-  // --- Refrigerator Enclosure (70cm: Z in [1.47, 2.15], Height: 2.20m) ---
-  const fridgeZ = 1.81;
-  const fridgeWidthZ = 0.68;
+  // --- 2F. Refrigerator Enclosure (70cm: Z in [1.35, 2.05], Height: 2.25m) ---
+  // Perfectly flush with the Bedroom 1 dividing wall at Z = 2.05!
+  const fridgeWidthZ = 0.70;
+  const fridgeZ = (1.35 + 2.05) / 2; // 1.70m
   const fridgeDepthX = 0.65;
   const fridgeMidX = longWallX - fridgeDepthX / 2;
   const fridgeTallH = 2.25;
 
-  // Tall matte black outer cabinet enclosure
-  // Top overhead bridge cabinet
-  addBox(fridgeDepthX, 0.35, fridgeWidthZ + 0.04, matteBlackMat, fridgeMidX, fridgeTallH - 0.175, fridgeZ);
-  // Side enclosure panel facing the room
-  addBox(fridgeDepthX, fridgeTallH, 0.025, matteBlackMat, fridgeMidX, fridgeTallH / 2, 1.47 - 0.0125);
+  const fridgeData = {
+    title: "Two-Door Refrigerator & Housing Enclosure",
+    zone: "Cold Storage Zone",
+    dimension: "70 cm (W) × 65 cm (D) × 225 cm (H)",
+    materials: "Dark Titanium Stainless Steel + Matte Black Full-Height Surround",
+    description: "Sleek 2-door refrigerator with full 90-degree door swing clearance and overhead bridge storage cabinet."
+  };
 
-  // Sleek 2-Door Refrigerator (Dark Titanium Stainless Steel)
+  // Top overhead bridge cabinet
+  addBox(fridgeDepthX, 0.35, fridgeWidthZ + 0.02, matteBlackMat, fridgeMidX, fridgeTallH - 0.175, fridgeZ, 0, fridgeData);
+  // Side enclosure panel facing into room
+  addBox(fridgeDepthX, fridgeTallH, 0.025, matteBlackMat, fridgeMidX, fridgeTallH / 2, 1.35 - 0.0125, 0, fridgeData);
+
+  // Sleek 2-Door Refrigerator body
   const fBodyH = 1.84;
   const fBodyY = fBodyH / 2;
-  const fBodyD = fridgeWidthZ - 0.03; // 0.65m wide
+  const fBodyD = fridgeWidthZ - 0.04; // 0.66m wide
   const fBodyW = 0.60;
   const fBodyX = longWallX - 0.02 - fBodyW / 2;
-  addBox(fBodyW, fBodyH, fBodyD, fridgeMat, fBodyX, fBodyY, fridgeZ);
+  addBox(fBodyW, fBodyH, fBodyD, fridgeMat, fBodyX, fBodyY, fridgeZ, 0, fridgeData);
 
-  // Door division gap (Top freezer / Bottom fridge doors)
+  // Door split gap & handles
   const splitY = 0.78;
   addBox(0.01, 0.01, fBodyD, recessedGrooveMat, fBodyX - fBodyW / 2 - 0.005, splitY, fridgeZ);
-
-  // Sleek vertical matte black bar handles
-  const handleMat = matteBlackMat;
-  // Freezer door handle (top)
-  addBox(0.02, 0.38, 0.02, handleMat, fBodyX - fBodyW / 2 - 0.025, splitY + 0.30, fridgeZ - (isCarportLeft ? 0.24 : -0.24));
-  // Main fridge door handle (bottom)
-  addBox(0.02, 0.45, 0.02, handleMat, fBodyX - fBodyW / 2 - 0.025, splitY - 0.32, fridgeZ - (isCarportLeft ? 0.24 : -0.24));
-
-  // Digital LED temperature & ice dispenser panel on top door
-  const fDispenserMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.8 });
-  addBox(0.008, 0.22, 0.12, fDispenserMat, fBodyX - fBodyW / 2 - 0.005, 1.35, fridgeZ);
+  addBox(0.02, 0.38, 0.02, matteBlackMat, fBodyX - fBodyW / 2 - 0.025, splitY + 0.30, fridgeZ - (isCarportLeft ? 0.24 : -0.24), 0, fridgeData);
+  addBox(0.02, 0.45, 0.02, matteBlackMat, fBodyX - fBodyW / 2 - 0.025, splitY - 0.32, fridgeZ - (isCarportLeft ? 0.24 : -0.24), 0, fridgeData);
+  addBox(0.008, 0.22, 0.12, new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.1, metalness: 0.8 }), fBodyX - fBodyW / 2 - 0.005, 1.35, fridgeZ, 0, fridgeData);
 
   // --- Backsplash on Long Right Wall ---
-  // Glazed beige square ceramic tiles from counterTopY (0.90) to upper cabinet underside (1.55)
-  // Covers from corner (Z: -1.15) to fridge edge (Z: 1.47) -> length 2.62m
-  const longBacksplashLen = 1.47 - (-1.15); // 2.62m
-  const longBacksplashMidZ = (-1.15 + 1.47) / 2; // 0.16m
-  addBox(0.015, backsplashHeight, longBacksplashLen, backsplashMat, longWallX - 0.008, backsplashMidY, longBacksplashMidZ);
+  // Covers from corner (Z: -1.15) to fridge panel (Z: 1.35) -> length 2.50m
+  const longBacksplashLen = 1.35 - (-1.15); // 2.50m
+  const longBacksplashMidZ = (-1.15 + 1.35) / 2; // 0.10m
+  addBox(0.015, backsplashHeight, longBacksplashLen, backsplashMat, longWallX - 0.008, backsplashMidY, longBacksplashMidZ, 0, backsplashData);
 
-  // --- Upper Cabinetry on Long Right Wall ---
-  // Matte black handleless wall cabinets (Depth: 0.35m, Height: 0.80m, Y: 1.55 to 2.35m)
+  // --- Upper Cabinets on Long Right Wall ---
   const upperMidX_long = longWallX - upperDepth / 2;
-  // Section A: Corner to Hob (Z: -0.80 to -0.05, length 0.75m)
-  addBox(upperDepth, upperHeight, 0.75, matteBlackMat, upperMidX_long, upperMidY, -0.425);
-  // Vertical door groove
+  // Corner to Hob (Z: -0.80 to -0.05, length 0.75m)
+  addBox(upperDepth, upperHeight, 0.75, matteBlackMat, upperMidX_long, upperMidY, -0.425, 0, upperCabData);
   addBox(0.005, upperHeight - 0.04, 0.004, recessedGrooveMat, upperMidX_long - upperDepth / 2 - 0.002, upperMidY, -0.425);
+  // Above Hob (Z: -0.05 to 0.68, length 0.73m)
+  addBox(upperDepth, upperHeight - 0.10, cookLen, matteBlackMat, upperMidX_long, upperMidY + 0.05, cookZ, 0, upperCabData);
+  // Above Transition buffer (Z: 1.08 to 1.35, length 0.27m)
+  addBox(upperDepth, upperHeight, transLen, matteBlackMat, upperMidX_long, upperMidY, transZ, 0, upperCabData);
 
-  // Section B: Cooking zone upper cabinet (Z: -0.05 to 0.70, length 0.75m, houses the flush slimline hood)
-  addBox(upperDepth, upperHeight - 0.10, 0.75, matteBlackMat, upperMidX_long, upperMidY + 0.05, cookZ);
-
-  // Section C: Above Transition buffer (Z: 1.10 to 1.47, length 0.37m)
-  addBox(upperDepth, upperHeight, 0.37, matteBlackMat, upperMidX_long, upperMidY, transZ);
-
-  // Recessed finger-grip channel under upper cabinets along Long Wall
+  // Recessed finger-grip channel under long upper cabinets
   addBox(0.02, 0.02, 0.75, recessedGrooveMat, upperMidX_long - upperDepth / 2 + 0.02, upperBottomY + 0.01, -0.425);
-  addBox(0.02, 0.02, 0.37, recessedGrooveMat, upperMidX_long - upperDepth / 2 + 0.02, upperBottomY + 0.01, transZ);
+  addBox(0.02, 0.02, transLen, recessedGrooveMat, upperMidX_long - upperDepth / 2 + 0.02, upperBottomY + 0.01, transZ);
 
-  // Warm LED Under-Cabinet Strip Light along Long Run
-  addBox(0.02, 0.01, 0.74, ledEmissiveMat, upperMidX_long - upperDepth / 2 + 0.03, upperBottomY - 0.005, -0.425);
-  addBox(0.02, 0.01, 0.36, ledEmissiveMat, upperMidX_long - upperDepth / 2 + 0.03, upperBottomY - 0.005, transZ);
+  // LED strip on Long Wall
+  addBox(0.02, 0.01, 0.74, ledEmissiveMat, upperMidX_long - upperDepth / 2 + 0.03, upperBottomY - 0.005, -0.425, 0, ledData);
+  addBox(0.02, 0.01, transLen - 0.01, ledEmissiveMat, upperMidX_long - upperDepth / 2 + 0.03, upperBottomY - 0.005, transZ, 0, ledData);
 
-  const ledLightLong = new THREE.PointLight(0xffdfa0, 1.1, 3.0, 1.4);
+  const ledLightLong = new THREE.PointLight(0xffdfa0, 1.0, 3.0, 1.4);
   ledLightLong.position.set(mx(longWallX - 0.25), upperBottomY - 0.05, cookZ);
   kitchenGroup.add(ledLightLong);
 
   // =========================================================================
-  // 3. COLLIDERS (Prevent player clipping into counters in Walk Mode)
+  // 3. COLLIDERS
   // =========================================================================
   if (colliders && Array.isArray(colliders)) {
-    // Short wall base cabinet collider
     const shortBox = new THREE.Box3();
     const sMinX = Math.min(mx(0.30), mx(2.50));
     const sMaxX = Math.max(mx(0.30), mx(2.50));
@@ -575,12 +640,11 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     shortBox.max.set(sMaxX, 1.0, facingWallZ + counterDepth);
     colliders.push(shortBox);
 
-    // Long wall base cabinet collider
     const longBox = new THREE.Box3();
     const lMinX = Math.min(mx(longWallX - counterDepth), mx(longWallX));
     const lMaxX = Math.max(mx(longWallX - counterDepth), mx(longWallX));
     longBox.min.set(lMinX, 0, facingWallZ + counterDepth);
-    longBox.max.set(lMaxX, 2.3, 2.15);
+    longBox.max.set(lMaxX, 2.3, 2.05); // Exact flush wall end
     colliders.push(longBox);
   }
 
