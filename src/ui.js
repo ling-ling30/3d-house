@@ -111,7 +111,7 @@ export class UIManager {
         <div class="toolbar-divider"></div>
 
         <div class="toolbar-group">
-          <button id="btn-toggle-dimensions" class="tool-btn active" title="Toggle Metric Dimension Lines">
+          <button id="btn-toggle-dimensions" class="tool-btn" title="Toggle Metric Dimension Lines">
             <span>📐 Dimensions</span>
           </button>
           <button id="btn-toggle-sound" class="tool-btn" title="Toggle Footstep Sounds">

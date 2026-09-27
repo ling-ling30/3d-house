@@ -14,7 +14,7 @@ class App {
     this.currentHouseData = getHouseData(this.carportOnLeft, this.stripGardenSideWall);
     this.mode = 'dollhouse'; // Default to 3D Dollhouse overview
 
-    this.showDimensions = true; // Show dimensions by default
+    this.showDimensions = false; // Hidden by default
     this.muted = false;
 
     this.container = document.getElementById('canvas-container');
