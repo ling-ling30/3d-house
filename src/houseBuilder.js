@@ -192,8 +192,7 @@ export function buildHouse(scene, houseData) {
       const zNorthWall = -0.75;
       const zSouthWall = -7.25;
       const totalRoofDepth = Math.abs(zSouthWall - zNorthWall); // 6.50m
-      const slopeAngle = 0.03076; // Natural drainage slope (~0.20m fall over 6.50m)
-      const midY = 2.98;
+      const canopyY = 3.00; // Exact identical uniform level height across all long bars and cross bars
       const midZ = (zNorthWall + zSouthWall) / 2; // -4.00m
 
       // Black Satin Powder-Coated Structural Steel Material (matching photo's tubular beam and rafters)
@@ -230,44 +229,42 @@ export function buildHouse(scene, houseData) {
       // ----------------------------------------------------
       // 1. OUTER BLACK ROUND TUBULAR STEEL HEADER BEAM
       // ----------------------------------------------------
-      // Prominent round tubular steel beam running along the outer edge of the roof (as seen in photo)
+      // Prominent round tubular steel beam running along the outer edge of the roof (level from end to end)
       const tubeRadius = 0.046; // ~92mm outer diameter round pipe
       const headerTubeGeo = new THREE.CylinderGeometry(tubeRadius, tubeRadius, totalRoofDepth, 32);
       const headerTube = new THREE.Mesh(headerTubeGeo, blackSteelMat);
-      // Align along Z axis with roof slope
-      headerTube.rotation.x = Math.PI / 2 + slopeAngle;
-      headerTube.position.set(roofEdgeX, midY, midZ);
+      // Perfectly horizontal along Z axis at exact uniform canopyY
+      headerTube.rotation.x = Math.PI / 2;
+      headerTube.position.set(roofEdgeX, canopyY, midZ);
       headerTube.castShadow = true;
       headerTube.receiveShadow = true;
       canopyGroup.add(headerTube);
 
-      // Flanged wall anchor plates embedding tubular beam into North & South masonry walls
+      // Flanged wall anchor plates embedding tubular beam into North & South masonry walls at identical canopyY
       const wallPlateGeo = new THREE.BoxGeometry(0.12, 0.12, 0.02);
       const northPlate = new THREE.Mesh(wallPlateGeo, blackSteelMat);
-      northPlate.position.set(roofEdgeX, 3.08, zNorthWall + 0.01);
+      northPlate.position.set(roofEdgeX, canopyY, zNorthWall + 0.01);
       canopyGroup.add(northPlate);
 
       const southPlate = new THREE.Mesh(wallPlateGeo, blackSteelMat);
-      southPlate.position.set(roofEdgeX, 2.88, zSouthWall - 0.01);
+      southPlate.position.set(roofEdgeX, canopyY, zSouthWall - 0.01);
       canopyGroup.add(southPlate);
 
       // ----------------------------------------------------
       // 2. INNER WALL-MOUNTED STEEL LEDGER CHANNEL
       // ----------------------------------------------------
-      // Structural ledger anchored flush along the house wall
+      // Structural ledger anchored flush along the house wall at identical canopyY
       const ledgerGeo = new THREE.BoxGeometry(0.04, 0.07, totalRoofDepth);
       const ledgerMesh = new THREE.Mesh(ledgerGeo, blackSteelMat);
-      ledgerMesh.rotation.x = slopeAngle;
-      ledgerMesh.position.set(wallEdgeX, midY, midZ);
+      ledgerMesh.rotation.x = 0;
+      ledgerMesh.position.set(wallEdgeX, canopyY, midZ);
       ledgerMesh.castShadow = true;
       canopyGroup.add(ledgerMesh);
 
-      // Wall Anchor Brackets on Inner Ledger
+      // Wall Anchor Brackets on Inner Ledger at identical canopyY
       [-0.85, -2.40, -4.00, -5.60, -7.15].forEach(wz => {
-        const t = Math.abs(wz - zNorthWall) / totalRoofDepth;
-        const wy = 3.08 - t * 0.20;
         const wBracket = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.10, 0.06), blackSteelMat);
-        wBracket.position.set(wallEdgeX + (isCarportLeft ? 0.025 : -0.025), wy, wz);
+        wBracket.position.set(wallEdgeX + (isCarportLeft ? 0.025 : -0.025), canopyY, wz);
         canopyGroup.add(wBracket);
       });
 
@@ -275,7 +272,7 @@ export function buildHouse(scene, houseData) {
       // 3. TRANSVERSE BLACK STEEL RAFTERS / PURLINS (8 Rafters)
       // ----------------------------------------------------
       // Spanning cleanly from house wall ledger to outer round tubular beam
-      // Casts crisp geometric rafter shadows on the tiled patio floor!
+      // All 8 cross bars share the EXACT same uniform height (canopyY = 3.00m)
       const numRafters = 8;
       const rafterSpan = gWidth;
       const rafterGeo = new THREE.BoxGeometry(rafterSpan, 0.042, 0.042);
@@ -283,40 +280,40 @@ export function buildHouse(scene, houseData) {
       for (let ri = 0; ri < numRafters; ri++) {
         const t = ri / (numRafters - 1);
         const rz = zNorthWall - t * totalRoofDepth;
-        const ry = 3.08 - t * 0.20;
 
         const rafter = new THREE.Mesh(rafterGeo, blackSteelMat);
-        rafter.rotation.x = slopeAngle;
-        rafter.position.set(gMidX, ry, rz);
+        rafter.rotation.x = 0;
+        rafter.position.set(gMidX, canopyY, rz);
         rafter.castShadow = true;
         rafter.receiveShadow = true;
         canopyGroup.add(rafter);
 
-        // Welded joint collar where rafter joins the outer round pipe
+        // Welded joint collar where rafter joins the outer round pipe at identical canopyY
         const saddleJointGeo = new THREE.CylinderGeometry(tubeRadius + 0.005, tubeRadius + 0.005, 0.05, 20);
         const saddleJoint = new THREE.Mesh(saddleJointGeo, blackSteelMat);
-        saddleJoint.rotation.x = Math.PI / 2 + slopeAngle;
-        saddleJoint.position.set(roofEdgeX, ry, rz);
+        saddleJoint.rotation.x = Math.PI / 2;
+        saddleJoint.position.set(roofEdgeX, canopyY, rz);
         canopyGroup.add(saddleJoint);
       }
 
       // ----------------------------------------------------
       // 4. ARCHITECTURAL TRANSLUCENT ROOF PANELS
       // ----------------------------------------------------
-      // Clean modular sheets covering the overhead canopy
+      // Clean modular sheets covering the overhead canopy at uniform level height
       const numBays = numRafters - 1; // 7 bays
       const bayLength = totalRoofDepth / numBays;
       const glassThick = 0.010;
       const panelW = gWidth + 0.06; // slight overhang past tubular beam
+      const panelY = canopyY + 0.021 + glassThick / 2;
+      const cappingY = canopyY + 0.025 + glassThick;
 
       for (let bi = 0; bi < numBays; bi++) {
         const tMid = (bi + 0.5) / numBays;
         const panelZ = zNorthWall - tMid * totalRoofDepth;
-        const panelY = 3.08 - tMid * 0.20 + 0.021 + glassThick / 2;
 
         const panelGeo = new THREE.BoxGeometry(panelW, glassThick, bayLength - 0.012);
         const panelMesh = new THREE.Mesh(panelGeo, roofGlassMat);
-        panelMesh.rotation.x = slopeAngle;
+        panelMesh.rotation.x = 0;
         const panelX = gMidX + (isCarportLeft ? -0.03 : 0.03);
         panelMesh.position.set(panelX, panelY, panelZ);
         panelMesh.castShadow = false; // lets sunlight stream through onto the floor!
@@ -331,22 +328,22 @@ export function buildHouse(scene, houseData) {
         interactables.push(panelMesh);
         canopyGroup.add(panelMesh);
 
-        // Slim black weatherstripping capping profile along each rafter seam
+        // Slim black weatherstripping capping profile along each rafter seam at level height
         const cappingGeo = new THREE.BoxGeometry(panelW + 0.02, 0.008, 0.028);
         const cappingMesh = new THREE.Mesh(cappingGeo, blackSteelMat);
-        cappingMesh.rotation.x = slopeAngle;
+        cappingMesh.rotation.x = 0;
         const rafterT = bi / numBays;
-        cappingMesh.position.set(panelX, 3.08 - rafterT * 0.20 + 0.025 + glassThick, zNorthWall - rafterT * totalRoofDepth);
+        cappingMesh.position.set(panelX, cappingY, zNorthWall - rafterT * totalRoofDepth);
         canopyGroup.add(cappingMesh);
       }
 
       // ----------------------------------------------------
       // 5. RAINWATER GUTTER & CORNER PVC DOWNPIPE (Exact to Photo!)
       // ----------------------------------------------------
-      // Gutter collector at south wall
+      // Gutter collector at south wall aligned cleanly with canopyY
       const gutterGeo = new THREE.BoxGeometry(gWidth + 0.06, 0.07, 0.08);
       const gutterMesh = new THREE.Mesh(gutterGeo, blackSteelMat);
-      gutterMesh.position.set(gMidX, 2.85, zSouthWall + 0.04);
+      gutterMesh.position.set(gMidX, canopyY - 0.035, zSouthWall + 0.04);
       canopyGroup.add(gutterMesh);
 
       // Vertical White PVC Downpipe in the corner against the wall
@@ -355,7 +352,7 @@ export function buildHouse(scene, houseData) {
       const pipeRadius = 0.034; // ~68mm PVC pipe
       const pipeCornerX = wallEdgeX + (isCarportLeft ? -0.06 : 0.06);
       const pipeCornerZ = zSouthWall + 0.06;
-      const pipeHeight = 2.80; // from gutter Y=2.85 down to Y=0.05
+      const pipeHeight = (canopyY - 0.035) - 0.05; // from gutter down to floor Y=0.05
 
       const vertPipeGeo = new THREE.CylinderGeometry(pipeRadius, pipeRadius, pipeHeight, 24);
       const vertPipe = new THREE.Mesh(vertPipeGeo, pvcPipeMat);
