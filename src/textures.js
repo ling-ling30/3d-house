@@ -316,71 +316,187 @@ export function createGardenCorridorTexture() {
   return texture;
 }
 
-// Warm glazed beige square ceramic tiles for kitchen backsplash
+// High-Resolution Glazed Moroccan Zellige Square Ceramic Tiles for Backsplash (Matching Reference Photo)
+// 2048x2048 high-resolution procedural canvas matching exact handmade tile tones in media_1790527867438.png
 export function createGlazedBeigeTileTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = 2048;
+  canvas.height = 2048;
   const ctx = canvas.getContext('2d');
 
-  // Base grout color
-  ctx.fillStyle = '#b8ad9c';
-  ctx.fillRect(0, 0, 512, 512);
+  // Realistic warm sand cement grout background
+  ctx.fillStyle = '#b5aba0';
+  ctx.fillRect(0, 0, 2048, 2048);
 
-  // 4x4 square glazed ceramic tiles (128x128 per tile)
-  const tileSize = 64; // 8x8 grid of square tiles
-  for (let x = 0; x < 512; x += tileSize) {
-    for (let y = 0; y < 512; y += tileSize) {
-      // Natural handmade glaze variation
-      const hueShift = (Math.sin(x * 0.1 + y * 0.2) * 0.5 + 0.5) * 8 - 4;
-      const r = Math.round(232 + hueShift);
-      const g = Math.round(222 + hueShift * 0.9);
-      const b = Math.round(204 + hueShift * 0.7);
+  // 16x16 grid of square tiles (each ~128x128 px on 2048 canvas = ultra sharp at close up!)
+  const gridSize = 16;
+  const tileSize = 2048 / gridSize; // 128px per tile
+  const groutWidth = 4;
 
-      // Tile face
+  // Realistic artisanal color palette sampled directly from reference photo media_1790527867438.png:
+  // Warm ivory, parchment, champagne, cream, light biscuit
+  const tileHues = [
+    { r: 236, g: 231, b: 221 }, // soft ivory
+    { r: 230, g: 223, b: 211 }, // warm parchment
+    { r: 240, g: 235, b: 226 }, // luminous pale bone
+    { r: 224, g: 216, b: 202 }, // warm biscuit
+    { r: 234, g: 226, b: 215 }, // champagne glaze
+    { r: 228, g: 220, b: 208 }  // toasted almond
+  ];
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const x = col * tileSize;
+      const y = row * tileSize;
+
+      // Pseudo-random deterministic seed for consistent artisanal tile selection
+      const seed = Math.sin(row * 127.1 + col * 311.7) * 43758.5453;
+      const fract = seed - Math.floor(seed);
+      const colorIdx = Math.floor(fract * tileHues.length);
+      const base = tileHues[colorIdx];
+
+      // Subtle natural tone shift
+      const shift = (fract - 0.5) * 10;
+      const r = Math.min(255, Math.max(0, Math.round(base.r + shift)));
+      const g = Math.min(255, Math.max(0, Math.round(base.g + shift * 0.9)));
+      const b = Math.min(255, Math.max(0, Math.round(base.b + shift * 0.8)));
+
+      const innerX = x + groutWidth / 2;
+      const innerY = y + groutWidth / 2;
+      const innerW = tileSize - groutWidth;
+      const innerH = tileSize - groutWidth;
+
+      // Tile body fill
       ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
-      ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+      ctx.fillRect(innerX, innerY, innerW, innerH);
 
-      // Soft glazed surface gradient highlight
-      const grad = ctx.createLinearGradient(x, y, x + tileSize, y + tileSize);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 0.28)');
-      grad.addColorStop(0.5, 'rgba(255, 255, 255, 0.05)');
-      grad.addColorStop(1, 'rgba(0, 0, 0, 0.08)');
+      // Handmade glaze pooling gradient (wavy handcrafted reflective surface)
+      const grad = ctx.createLinearGradient(innerX, innerY, innerX + innerW, innerY + innerH);
+      grad.addColorStop(0, 'rgba(255, 255, 255, 0.35)');
+      grad.addColorStop(0.35, 'rgba(255, 255, 255, 0.08)');
+      grad.addColorStop(0.7, 'rgba(0, 0, 0, 0.04)');
+      grad.addColorStop(1, 'rgba(0, 0, 0, 0.12)');
       ctx.fillStyle = grad;
-      ctx.fillRect(x + 2, y + 2, tileSize - 4, tileSize - 4);
+      ctx.fillRect(innerX, innerY, innerW, innerH);
 
-      // Delicate edge cushion bevel
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(x + 2.5, y + 2.5, tileSize - 5, tileSize - 5);
+      // Soft pillowed bevel highlight along top/left edge
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(innerX + 1.5, innerY + innerH - 1.5);
+      ctx.lineTo(innerX + 1.5, innerY + 1.5);
+      ctx.lineTo(innerX + innerW - 1.5, innerY + 1.5);
+      ctx.stroke();
+
+      // Soft pillowed shadow along bottom/right edge
+      ctx.strokeStyle = 'rgba(60, 50, 40, 0.30)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(innerX + innerW - 1.5, innerY + 1.5);
+      ctx.lineTo(innerX + innerW - 1.5, innerY + innerH - 1.5);
+      ctx.lineTo(innerX + 1.5, innerY + innerH - 1.5);
+      ctx.stroke();
+
+      // Subtle micro-speckling for handcrafted ceramic authenticity
+      const speckleCount = Math.floor(fract * 12);
+      ctx.fillStyle = 'rgba(120, 110, 100, 0.15)';
+      for (let s = 0; s < speckleCount; s++) {
+        const sx = innerX + ((s * 37 + fract * 97) % (innerW - 8)) + 4;
+        const sy = innerY + ((s * 53 + fract * 71) % (innerH - 8)) + 4;
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      }
     }
   }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, 2);
+  texture.repeat.set(2, 2);
+  texture.anisotropy = 8;
   return texture;
 }
 
-// Polished white marble / granite countertop with fine grey veining
-export function createWhiteMarbleCounterTexture() {
+// Tangent-space Normal Map for Zellige Tiles (Generates 3D Pillowed Cushions & Grout Depth)
+export function createZelligeTileNormalMap() {
   const canvas = document.createElement('canvas');
   canvas.width = 1024;
   canvas.height = 1024;
   const ctx = canvas.getContext('2d');
 
-  // Base luminous crisp white
-  ctx.fillStyle = '#faf9f6';
+  // Flat normal vector: R=128 (X=0), G=128 (Y=0), B=255 (Z=1.0)
+  ctx.fillStyle = 'rgb(128, 128, 255)';
   ctx.fillRect(0, 0, 1024, 1024);
 
-  // Soft subtle cloudy depth
-  for (let i = 0; i < 20; i++) {
-    const rx = Math.random() * 1024;
-    const ry = Math.random() * 1024;
-    const rad = 100 + Math.random() * 200;
-    const grad = ctx.createRadialGradient(rx, ry, 10, rx, ry, rad);
-    grad.addColorStop(0, 'rgba(235, 235, 232, 0.4)');
+  const gridSize = 16;
+  const tileSize = 1024 / gridSize;
+  const groutW = 3;
+
+  for (let row = 0; row < gridSize; row++) {
+    for (let col = 0; col < gridSize; col++) {
+      const x = col * tileSize;
+      const y = row * tileSize;
+      const w = tileSize - groutW;
+      const h = tileSize - groutW;
+
+      // Bevel pillow gradients:
+      // Left edge slope (tilts normal +X -> R > 128)
+      const gradLeft = ctx.createLinearGradient(x, y, x + 6, y);
+      gradLeft.addColorStop(0, 'rgb(195, 128, 220)');
+      gradLeft.addColorStop(1, 'rgb(128, 128, 255)');
+      ctx.fillStyle = gradLeft;
+      ctx.fillRect(x, y, 6, h);
+
+      // Right edge slope (tilts normal -X -> R < 128)
+      const gradRight = ctx.createLinearGradient(x + w - 6, y, x + w, y);
+      gradRight.addColorStop(0, 'rgb(128, 128, 255)');
+      gradRight.addColorStop(1, 'rgb(60, 128, 220)');
+      ctx.fillStyle = gradRight;
+      ctx.fillRect(x + w - 6, y, 6, h);
+
+      // Top edge slope (tilts normal +Y -> G > 128)
+      const gradTop = ctx.createLinearGradient(x, y, x, y + 6);
+      gradTop.addColorStop(0, 'rgb(128, 195, 220)');
+      gradTop.addColorStop(1, 'rgb(128, 128, 255)');
+      ctx.fillStyle = gradTop;
+      ctx.fillRect(x, y, w, 6);
+
+      // Bottom edge slope (tilts normal -Y -> G < 128)
+      const gradBottom = ctx.createLinearGradient(x, y + h - 6, x, y + h);
+      gradBottom.addColorStop(0, 'rgb(128, 128, 255)');
+      gradBottom.addColorStop(1, 'rgb(128, 60, 220)');
+      ctx.fillStyle = gradBottom;
+      ctx.fillRect(x, y + h - 6, w, 6);
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(2, 2);
+  texture.anisotropy = 8;
+  return texture;
+}
+
+// 2048x2048 High-Resolution Polished White Carrara Marble Countertop Texture
+// Matches the luminous white marble slab with delicate grey veins seen in media_1790527867438.png
+export function createWhiteMarbleCounterTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 2048;
+  canvas.height = 2048;
+  const ctx = canvas.getContext('2d');
+
+  // Luminous crisp Carrara white ground
+  ctx.fillStyle = '#faf9f6';
+  ctx.fillRect(0, 0, 2048, 2048);
+
+  // Soft cloudy micro-depth layers (crystalline translucency)
+  for (let i = 0; i < 35; i++) {
+    const rx = ((i * 197) % 2048);
+    const ry = ((i * 311) % 2048);
+    const rad = 150 + (i % 5) * 60;
+    const grad = ctx.createRadialGradient(rx, ry, 20, rx, ry, rad);
+    grad.addColorStop(0, 'rgba(238, 237, 233, 0.45)');
+    grad.addColorStop(0.6, 'rgba(246, 245, 241, 0.20)');
     grad.addColorStop(1, 'rgba(250, 249, 246, 0)');
     ctx.fillStyle = grad;
     ctx.beginPath();
@@ -388,70 +504,176 @@ export function createWhiteMarbleCounterTexture() {
     ctx.fill();
   }
 
-  // Elegant flowing grey smoke veins
-  const veins = [
-    { startX: 50, startY: 0, cp1x: 280, cp1y: 350, cp2x: 420, cp2y: 650, endX: 750, endY: 1024, width: 2.2, alpha: 0.28 },
-    { startX: 620, startY: 0, cp1x: 520, cp1y: 400, cp2x: 780, cp2y: 720, endX: 920, endY: 1024, width: 1.8, alpha: 0.22 },
-    { startX: 0, startY: 420, cp1x: 310, cp1y: 490, cp2x: 580, cp2y: 380, endX: 1024, endY: 580, width: 1.5, alpha: 0.18 },
-    { startX: 200, startY: 0, cp1x: 350, cp1y: 200, cp2x: 280, cp2y: 450, endX: 450, endY: 600, width: 1.0, alpha: 0.15 }
+  // Primary flowing smoke veins (multi-octave organic curves)
+  const mainVeins = [
+    { startX: 120, startY: 0, cp1x: 580, cp1y: 650, cp2x: 820, cp2y: 1250, endX: 1450, endY: 2048, width: 3.8, alpha: 0.32 },
+    { startX: 1250, startY: 0, cp1x: 1050, cp1y: 750, cp2x: 1550, cp2y: 1350, endX: 1850, endY: 2048, width: 3.2, alpha: 0.26 },
+    { startX: 0, startY: 820, cp1x: 620, cp1y: 950, cp2x: 1150, cp2y: 720, endX: 2048, endY: 1150, width: 2.8, alpha: 0.22 },
+    { startX: 420, startY: 0, cp1x: 720, cp1y: 420, cp2x: 560, cp2y: 880, endX: 920, endY: 1200, width: 2.2, alpha: 0.20 },
+    { startX: 850, startY: 1200, cp1x: 1250, cp1y: 1550, cp2x: 1450, cp2y: 1800, endX: 1950, endY: 2048, width: 2.5, alpha: 0.24 }
   ];
 
-  veins.forEach(v => {
-    ctx.strokeStyle = `rgba(135, 142, 148, ${v.alpha})`;
+  mainVeins.forEach(v => {
+    // Soft outer feather
+    ctx.strokeStyle = `rgba(165, 172, 178, ${v.alpha * 0.4})`;
+    ctx.lineWidth = v.width * 2.8;
+    ctx.beginPath();
+    ctx.moveTo(v.startX, v.startY);
+    ctx.bezierCurveTo(v.cp1x, v.cp1y, v.cp2x, v.cp2y, v.endX, v.endY);
+    ctx.stroke();
+
+    // Defined core vein
+    ctx.strokeStyle = `rgba(125, 132, 138, ${v.alpha})`;
     ctx.lineWidth = v.width;
     ctx.beginPath();
     ctx.moveTo(v.startX, v.startY);
     ctx.bezierCurveTo(v.cp1x, v.cp1y, v.cp2x, v.cp2y, v.endX, v.endY);
     ctx.stroke();
 
-    // Secondary hairline feathering
-    ctx.strokeStyle = `rgba(165, 170, 175, ${v.alpha * 0.6})`;
-    ctx.lineWidth = 0.8;
-    ctx.beginPath();
-    ctx.moveTo(v.startX + 8, v.startY + 4);
-    ctx.bezierCurveTo(v.cp1x + 12, v.cp1y - 8, v.cp2x - 10, v.cp2y + 15, v.endX + 6, v.endY);
-    ctx.stroke();
+    // Hairline branch capillaries
+    for (let b = 0; b < 4; b++) {
+      const t = 0.2 + b * 0.22;
+      const bx = (1 - t) * (1 - t) * v.startX + 2 * (1 - t) * t * v.cp1x + t * t * v.cp2x;
+      const by = (1 - t) * (1 - t) * v.startY + 2 * (1 - t) * t * v.cp1y + t * t * v.cp2y;
+      ctx.strokeStyle = `rgba(145, 150, 155, ${v.alpha * 0.5})`;
+      ctx.lineWidth = 1.0;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.quadraticCurveTo(bx + 40 * (b % 2 === 0 ? 1 : -1), by + 30, bx + 90 * (b % 2 === 0 ? 1 : -1), by + 75);
+      ctx.stroke();
+    }
   });
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(2, 2);
+  texture.repeat.set(1.5, 1.5);
+  texture.anisotropy = 8;
   return texture;
 }
 
-// Natural warm honey oak wood for display tower and open shelves
+// Natural warm honey oak wood for display tower, open shelves, and cutting board (1024x1024 high-res)
 export function createWarmOakTexture() {
   const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
+  canvas.width = 1024;
+  canvas.height = 1024;
   const ctx = canvas.getContext('2d');
 
-  // Warm honey golden oak tone
-  ctx.fillStyle = '#bf9159';
-  ctx.fillRect(0, 0, 512, 512);
+  // Base warm golden honey oak tone
+  ctx.fillStyle = '#b68750';
+  ctx.fillRect(0, 0, 1024, 1024);
 
-  // Subtle grain lines
-  for (let y = 0; y < 512; y += 3) {
-    const darkness = Math.sin(y * 0.15) * 0.08 + (Math.random() - 0.5) * 0.04;
-    ctx.fillStyle = `rgba(85, 52, 22, ${Math.max(0, 0.1 + darkness)})`;
-    ctx.fillRect(0, y, 512, 1.5);
+  // Subtle tonal wood plank variations
+  const grad = ctx.createLinearGradient(0, 0, 0, 1024);
+  grad.addColorStop(0.0, 'rgba(195, 148, 92, 0.4)');
+  grad.addColorStop(0.3, 'rgba(170, 122, 70, 0.3)');
+  grad.addColorStop(0.7, 'rgba(188, 140, 85, 0.35)');
+  grad.addColorStop(1.0, 'rgba(162, 114, 64, 0.45)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Fine longitudinal wood grain fibers
+  for (let y = 0; y < 1024; y += 2) {
+    const wave = Math.sin(y * 0.08) * 1.5 + Math.sin(y * 0.02) * 3;
+    const alpha = 0.06 + (Math.sin(y * 0.12) * 0.5 + 0.5) * 0.14 + (Math.random() - 0.5) * 0.05;
+    ctx.fillStyle = `rgba(78, 48, 22, ${Math.max(0.02, alpha)})`;
+    ctx.fillRect(0, y + wave, 1024, 1.2);
   }
 
-  // Cathedral grain swirls
-  ctx.strokeStyle = 'rgba(75, 45, 18, 0.18)';
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.ellipse(256, 180, 160, 80, 0, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.ellipse(256, 360, 190, 90, 0, 0, Math.PI * 2);
-  ctx.stroke();
+  // Medullary rays (characteristic oak transverse flecks)
+  for (let i = 0; i < 400; i++) {
+    const rx = Math.random() * 1024;
+    const ry = Math.random() * 1024;
+    const rw = 12 + Math.random() * 35;
+    ctx.fillStyle = 'rgba(215, 175, 120, 0.22)';
+    ctx.fillRect(rx, ry, rw, 1.8);
+  }
+
+  // Cathedral grain arches and growth rings
+  ctx.strokeStyle = 'rgba(72, 42, 18, 0.18)';
+  ctx.lineWidth = 1.8;
+  for (let c = 0; c < 5; c++) {
+    const cy = 200 + c * 180;
+    ctx.beginPath();
+    ctx.ellipse(512 + (c % 2 === 0 ? 60 : -60), cy, 320, 110, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   const texture = new THREE.CanvasTexture(canvas);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
   texture.repeat.set(1, 2);
+  texture.anisotropy = 8;
+  return texture;
+}
+
+// High-Clarity Brushed Stainless Steel / Titanium Texture for 1-Door Refrigerator (1024x1024)
+export function createBrushedFridgeTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Base metallic titanium steel tone (distinctly brighter & more reflective than matte black cabinetry)
+  ctx.fillStyle = '#8e969f';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Vertical cylindrical specular light sweep across the door panel
+  const grad = ctx.createLinearGradient(0, 0, 1024, 0);
+  grad.addColorStop(0.0, 'rgba(100, 108, 118, 0.9)');
+  grad.addColorStop(0.18, 'rgba(150, 158, 168, 0.7)');
+  grad.addColorStop(0.38, 'rgba(215, 224, 235, 0.85)'); // bright specular highlight
+  grad.addColorStop(0.55, 'rgba(175, 185, 195, 0.6)');
+  grad.addColorStop(0.80, 'rgba(125, 133, 142, 0.75)');
+  grad.addColorStop(1.0, 'rgba(95, 102, 110, 0.9)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // Microscopic horizontal brushed metal hairline streaks
+  for (let y = 0; y < 1024; y += 1) {
+    const brightness = (Math.random() - 0.5) * 45;
+    const alpha = 0.12 + Math.random() * 0.18;
+    ctx.fillStyle = brightness > 0
+      ? `rgba(255, 255, 255, ${alpha})`
+      : `rgba(20, 25, 30, ${alpha * 0.8})`;
+    ctx.fillRect(0, y, 1024, 1);
+  }
+
+  // Outer beveled perimeter shadow & highlight
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.lineWidth = 6;
+  ctx.strokeRect(6, 6, 1012, 1012);
+
+  ctx.strokeStyle = 'rgba(20, 25, 30, 0.5)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(12, 12, 1000, 1000);
+
+  // Black Glass Integrated Digital Temperature Display at eye level (Y: 240 to 380)
+  ctx.fillStyle = '#111316';
+  ctx.fillRect(362, 260, 300, 110);
+  ctx.strokeStyle = 'rgba(160, 175, 195, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(362, 260, 300, 110);
+
+  // Glowing Ice-Blue Digital Readout
+  ctx.fillStyle = '#00f0ff';
+  ctx.font = 'bold 44px "Courier New", monospace';
+  ctx.fillText('3 °C', 450, 320);
+
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = 'rgba(0, 240, 255, 0.75)';
+  ctx.fillText('OPTIMAL FRESH • ECO MODE', 400, 350);
+
+  // Brand Name Badge
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 22px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('SIGNATURE', 512, 210);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.ClampToEdgeWrapping;
+  texture.wrapT = THREE.ClampToEdgeWrapping;
+  texture.anisotropy = 8;
   return texture;
 }
 
@@ -640,6 +862,180 @@ export function createStuccoTexture() {
   texture.repeat.set(3, 3);
   return texture;
 }
+
+// Handcrafted Undulating Beige Ceramic Tile Texture (1024x1024)
+// Perfectly matching media_1790529799947.png:
+// - 10x10 cm square tile grid in stack bond
+// - Warm champagne / ivory / honey-beige natural variation
+// - Handcrafted glaze pooling with organic edge irregularities
+// - Fine tone-on-tone grout lines
+export function createRoughBeigeCeramicTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Warm earthy clay-beige grout base
+  ctx.fillStyle = '#9e8d77';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  // 8x8 square tile grid (each tile 128x128 px, matching 10x10cm handcrafted ceramic format)
+  const gridSize = 8;
+  const tileSize = 1024 / gridSize;
+  const groutW = 2.5;
+
+  // Authentic light limestone / travertine warm beige palette directly matching user reference photo media_1790531162667.png
+  const palettes = [
+    { r: 213, g: 200, b: 184 }, // Base Natural Beige (#d5c8b8)
+    { r: 218, g: 207, b: 194 }, // Soft Creamy Limestone (#dacfc2)
+    { r: 208, g: 194, b: 178 }, // Warm Sand Beige (#d0c2b2)
+    { r: 223, g: 212, b: 199 }, // Warm Ivory Beige (#dfd4c7)
+    { r: 204, g: 192, b: 175 }, // Natural Earth Stone (#ccc0af)
+    { r: 215, g: 205, b: 191 }  // Warm Travertine (#d7cdbf)
+  ];
+
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const x = c * tileSize + groutW;
+      const y = r * tileSize + groutW;
+      const w = tileSize - groutW * 2;
+      const h = tileSize - groutW * 2;
+
+      // Deterministic palette pick per tile
+      const seed = Math.abs(Math.sin(r * 41 + c * 59));
+      const pIdx = Math.floor(seed * palettes.length) % palettes.length;
+      const baseCol = palettes[pIdx];
+
+      // Subtle natural tone shift
+      const shift = Math.sin(r * 17 + c * 29) * 4;
+      const red = Math.min(255, Math.max(0, Math.round(baseCol.r + shift)));
+      const green = Math.min(255, Math.max(0, Math.round(baseCol.g + shift * 0.95)));
+      const blue = Math.min(255, Math.max(0, Math.round(baseCol.b + shift * 0.90)));
+
+      ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+      ctx.fillRect(x, y, w, h);
+
+      // Natural travertine stone mottling / cloudy variations
+      for (let m = 0; m < 12; m++) {
+        const mx = x + ((m * 37 + Math.floor(seed * 91)) % (w - 16));
+        const my = y + ((m * 43 + Math.floor(seed * 67)) % (h - 16));
+        const mr = 10 + (m % 5) * 4;
+        const mAlpha = 0.04 + (m % 3) * 0.02;
+        const isLighter = (m % 2 === 0);
+        ctx.fillStyle = isLighter ? `rgba(245, 238, 226, ${mAlpha})` : `rgba(175, 158, 138, ${mAlpha})`;
+        ctx.beginPath();
+        ctx.arc(mx, my, mr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Fine stone grain stippling
+      ctx.fillStyle = 'rgba(140, 122, 102, 0.08)';
+      for (let s = 0; s < 40; s++) {
+        const sx = x + ((s * 29 + Math.floor(seed * 71)) % w);
+        const sy = y + ((s * 31 + Math.floor(seed * 47)) % h);
+        ctx.fillRect(sx, sy, 1.2, 1.2);
+      }
+    }
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.anisotropy = 8;
+  return texture;
+}
+
+// Tangent-Space Normal Map for Handcrafted Undulating Zellige / Ceramic Tiles
+// Creates the liquid-like wavy surface ripples and per-tile tilt seen reflecting under LED wash in media_1790529799947.png
+export function createRoughBeigeCeramicNormalMap() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 1024;
+  canvas.height = 1024;
+  const ctx = canvas.getContext('2d');
+
+  // Flat normal vector: R=128 (X=0), G=128 (Y=0), B=255 (Z=1.0)
+  ctx.fillStyle = 'rgb(128, 128, 255)';
+  ctx.fillRect(0, 0, 1024, 1024);
+
+  const gridSize = 8;
+  const tileSize = 1024 / gridSize;
+  const groutW = 2.5;
+
+  const imgData = ctx.getImageData(0, 0, 1024, 1024);
+  const data = imgData.data;
+
+  for (let r = 0; r < gridSize; r++) {
+    for (let c = 0; c < gridSize; c++) {
+      const startX = Math.round(c * tileSize + groutW);
+      const startY = Math.round(r * tileSize + groutW);
+      const endX = Math.round((c + 1) * tileSize - groutW);
+      const endY = Math.round((r + 1) * tileSize - groutW);
+      const w = endX - startX;
+      const h = endY - startY;
+
+      // Unique random tilt and wavy frequencies for each handcrafted tile
+      const seed = Math.sin(r * 53 + c * 79);
+      const tiltX = seed * 16; // Slight X-slope
+      const tiltY = Math.cos(r * 37 + c * 61) * 16; // Slight Y-slope
+      const waveFreqX = 0.08 + Math.abs(seed) * 0.06;
+      const waveFreqY = 0.07 + Math.abs(Math.cos(r + c)) * 0.05;
+      const wavePhaseX = seed * 10;
+      const wavePhaseY = Math.cos(seed) * 10;
+
+      for (let py = startY; py < endY; py++) {
+        const ny = (py - startY) / h; // Normalized 0..1
+        for (let px = startX; px < endX; px++) {
+          const nx = (px - startX) / w; // Normalized 0..1
+
+          // 1. Organic handcrafted rippled surface (sine waves simulating hand-rolled clay)
+          const waveX = Math.sin(px * waveFreqX + wavePhaseX) * 18;
+          const waveY = Math.cos(py * waveFreqY + wavePhaseY) * 18;
+
+          // 2. Soft pillowed dome curvature (slight convex bulge in tile center)
+          const domeX = (nx - 0.5) * -22;
+          const domeY = (ny - 0.5) * -22;
+
+          // 3. Bevel slope near tile edges dropping into grout
+          let edgeBevelX = 0;
+          let edgeBevelY = 0;
+          const edgeDist = 6;
+          if (px - startX < edgeDist) edgeBevelX = (edgeDist - (px - startX)) * 12;
+          else if (endX - px < edgeDist) edgeBevelX = -((edgeDist - (endX - px)) * 12);
+          if (py - startY < edgeDist) edgeBevelY = (edgeDist - (py - startY)) * 12;
+          else if (endY - py < edgeDist) edgeBevelY = -((edgeDist - (endY - py)) * 12);
+
+          // Combined normal vector perturbation
+          const normX = Math.round(Math.min(255, Math.max(0, 128 + tiltX + waveX + domeX + edgeBevelX)));
+          const normY = Math.round(Math.min(255, Math.max(0, 128 + tiltY + waveY + domeY + edgeBevelY)));
+          // Z component keeps unit length
+          const dx = (normX - 128) / 128;
+          const dy = (normY - 128) / 128;
+          const dz = Math.sqrt(Math.max(0, 1 - dx * dx - dy * dy));
+          const normZ = Math.round(dz * 255);
+
+          const idx = (py * 1024 + px) * 4;
+          data[idx] = normX;
+          data[idx + 1] = normY;
+          data[idx + 2] = normZ;
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(1, 1);
+  texture.anisotropy = 8;
+  return texture;
+}
+
+// Backward-compatibility export alias
+export const createRoughBeigeCeramicBumpMap = createRoughBeigeCeramicNormalMap;
+
 
 
 

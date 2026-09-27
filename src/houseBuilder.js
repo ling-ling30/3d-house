@@ -419,6 +419,7 @@ export function buildHouse(scene, houseData) {
       (Math.abs(midX - (-2.50)) < 0.15 && midZ < -0.70) ||
       (Math.abs(midX - 2.50) < 0.15 && midZ < -0.70 && !houseData.carportOnLeft)
     );
+
     const selectedMat = isWindowGlass ? glassMat : (isOutdoorBoundary ? boundaryWallMat : wallMat);
 
     const geo = new THREE.BoxGeometry(len, height, thickness);

@@ -355,29 +355,37 @@ class App {
     lineMesh.renderOrder = 998;
     this.hoverDimensionGroup.add(lineMesh);
 
-    // Crisp high-resolution label sprite "|-- 200 mm --|"
+    // Crisp auto-sized dimension label sprite (never clips text)
+    const measureCanvas = document.createElement('canvas');
+    const mCtx = measureCanvas.getContext('2d');
+    mCtx.font = 'bold 30px "JetBrains Mono", monospace';
+    const textWidth = Math.ceil(mCtx.measureText(dimInfo.label).width);
+
     const canvas = document.createElement('canvas');
-    canvas.width = 384;
-    canvas.height = 80;
+    const paddingX = 36;
+    const canvasW = Math.max(180, textWidth + paddingX * 2);
+    const canvasH = 84;
+    canvas.width = canvasW;
+    canvas.height = canvasH;
     const ctx = canvas.getContext('2d');
 
-    // Rounded dark pill
-    ctx.fillStyle = 'rgba(11, 15, 23, 0.90)';
+    // Rounded dark pill container
+    ctx.fillStyle = 'rgba(11, 15, 23, 0.94)';
     ctx.beginPath();
-    ctx.roundRect(8, 8, 368, 64, 12);
+    ctx.roundRect(4, 4, canvasW - 8, canvasH - 8, 14);
     ctx.fill();
 
-    // Cyan glowing stroke
+    // Vibrant cyan stroke
     ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 3;
     ctx.stroke();
 
-    // Dimension label
-    ctx.font = 'bold 28px "JetBrains Mono", monospace';
+    // Centered dimension label
+    ctx.font = 'bold 30px "JetBrains Mono", monospace';
     ctx.fillStyle = '#ffffff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(dimInfo.label, 192, 40);
+    ctx.fillText(dimInfo.label, canvasW / 2, canvasH / 2);
 
     const spriteTex = new THREE.CanvasTexture(canvas);
     const spriteMat = new THREE.SpriteMaterial({
@@ -387,11 +395,13 @@ class App {
       opacity: 0.98
     });
     const sprite = new THREE.Sprite(spriteMat);
-    sprite.scale.set(0.68, 0.15, 1.0);
+    const aspect = canvasW / canvasH;
+    const spriteH = 0.15;
+    sprite.scale.set(spriteH * aspect, spriteH, 1.0);
     sprite.renderOrder = 999;
 
     const mid = p1.clone().lerp(p2, 0.5);
-    sprite.position.set(mid.x, mid.y + 0.045, mid.z);
+    sprite.position.set(mid.x, mid.y + 0.05, mid.z);
     this.hoverDimensionGroup.add(sprite);
   }
 
