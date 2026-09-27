@@ -272,7 +272,7 @@ class App {
   }
 
   updateHoverInspection() {
-    const interactables = (this.houseResult && this.houseResult.kitchenGroup && this.houseResult.kitchenGroup.userData.interactables) || [];
+    const interactables = (this.houseResult && (this.houseResult.interactables || (this.houseResult.kitchenGroup && this.houseResult.kitchenGroup.userData.interactables))) || [];
     if (!interactables || interactables.length === 0) {
       if (this.hoveredItem) {
         this.clear3DDimension();

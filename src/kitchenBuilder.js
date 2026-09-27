@@ -16,21 +16,21 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   const marbleTex = createWhiteMarbleCounterTexture();
   const oakTex = createWarmOakTexture();
 
-  // Materials
+  // Materials: Architectural Matte Graphite Charcoal (realistic non-pure-black with soft specular sheen)
   const matteBlackMat = new THREE.MeshStandardMaterial({
-    color: 0x181818,
-    roughness: 0.55,
-    metalness: 0.12
+    color: 0x2c2e33,
+    roughness: 0.48,
+    metalness: 0.10
   });
 
   const recessedGrooveMat = new THREE.MeshStandardMaterial({
-    color: 0x080808,
-    roughness: 0.8
+    color: 0x1c1e21,
+    roughness: 0.7
   });
 
   const plinthMat = new THREE.MeshStandardMaterial({
-    color: 0x121212,
-    roughness: 0.7
+    color: 0x232529,
+    roughness: 0.65
   });
 
   const marbleMat = new THREE.MeshStandardMaterial({
@@ -52,32 +52,32 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   });
 
   const faucetMat = new THREE.MeshStandardMaterial({
-    color: 0x1b1b1b,
-    roughness: 0.22,
-    metalness: 0.85
+    color: 0x292b2f,
+    roughness: 0.32,
+    metalness: 0.78
   });
 
   const sinkMetalMat = new THREE.MeshStandardMaterial({
-    color: 0x222428,
-    roughness: 0.32,
-    metalness: 0.75
+    color: 0x2d3036,
+    roughness: 0.38,
+    metalness: 0.65
   });
 
   const stainlessMat = new THREE.MeshStandardMaterial({
-    color: 0xcccccc,
+    color: 0xd1d5db,
     roughness: 0.28,
     metalness: 0.85
   });
 
   const glassHobMat = new THREE.MeshStandardMaterial({
-    color: 0x080808,
+    color: 0x1d1f24,
     roughness: 0.08,
-    metalness: 0.92
+    metalness: 0.88
   });
 
   const castIronMat = new THREE.MeshStandardMaterial({
-    color: 0x282828,
-    roughness: 0.82,
+    color: 0x34373c,
+    roughness: 0.78,
     metalness: 0.25
   });
 
@@ -88,17 +88,17 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   });
 
   const fridgeMat = new THREE.MeshStandardMaterial({
-    color: 0x26282b,
+    color: 0x33363b,
     roughness: 0.38,
-    metalness: 0.68
+    metalness: 0.65
   });
 
   const smokedGlassMat = new THREE.MeshPhysicalMaterial({
-    color: 0x181818,
-    roughness: 0.1,
-    transmission: 0.55,
+    color: 0x1e2024,
+    roughness: 0.12,
+    transmission: 0.6,
     transparent: true,
-    opacity: 0.82
+    opacity: 0.85
   });
 
   const ledEmissiveMat = new THREE.MeshBasicMaterial({
@@ -364,13 +364,13 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   };
   addBox(counterDepth, slabThick, counterDepth, marbleMat, baseMidX, counterTopY - slabThick / 2, facingWallZ + counterDepth / 2, 0, cornerDim);
 
-  // --- 2B. Prep Buffer (500mm: Z in [-0.55, -0.05]) ---
-  const prepZ = -0.30;
-  const prepLen = 0.50;
+  // --- 2B. Prep Buffer (450mm: Z in [-0.55, -0.10]) ---
+  const prepZ = (-0.55 + -0.10) / 2; // -0.325
+  const prepLen = 0.45;
   const prepDim = {
-    label: "|-- 500 mm --|",
+    label: "|-- 450 mm --|",
     p1: [longEdgeX, 0.93, -0.55],
-    p2: [longEdgeX, 0.93, -0.05],
+    p2: [longEdgeX, 0.93, -0.10],
     axis: 'z'
   };
   addBox(counterDepth - 0.02, cabHeight, prepLen, matteBlackMat, baseMidX, cabMidY, prepZ);
@@ -378,29 +378,29 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   addBox(0.025, 0.035, prepLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, prepZ);
   addBox(counterDepth, slabThick, prepLen, marbleMat, baseMidX, counterTopY - slabThick / 2, prepZ, 0, prepDim);
 
-  addBox(0.32, 0.03, 0.38, oakMat, longWallX - 0.32, counterTopY + 0.015, prepZ, 0, prepDim);
+  addBox(0.32, 0.03, 0.36, oakMat, longWallX - 0.32, counterTopY + 0.015, prepZ, 0, prepDim);
   const crockMesh = new THREE.Mesh(
     new THREE.CylinderGeometry(0.055, 0.05, 0.14, 20),
     new THREE.MeshStandardMaterial({ color: 0xded8cc, roughness: 0.3 })
   );
-  crockMesh.position.set(mx(longWallX - 0.16), counterTopY + 0.07, -0.45);
+  crockMesh.position.set(mx(longWallX - 0.16), counterTopY + 0.07, -0.42);
   registerItem(crockMesh, prepDim);
   kitchenGroup.add(crockMesh);
   for (let si = 0; si < 3; si++) {
     const spoon = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.22, 10), oakMat);
     spoon.rotation.x = 0.15 * (si - 1);
     spoon.rotation.z = (isCarportLeft ? 1 : -1) * 0.18;
-    spoon.position.set(mx(longWallX - 0.16 + (si - 1) * 0.015), counterTopY + 0.15, -0.45 + (si - 1) * 0.015);
+    spoon.position.set(mx(longWallX - 0.16 + (si - 1) * 0.015), counterTopY + 0.15, -0.42 + (si - 1) * 0.015);
     kitchenGroup.add(spoon);
   }
 
-  // --- 2C. Cooking Station (730mm: Z in [-0.05, 0.68]) ---
+  // --- 2C. Cooking Station (730mm: Z in [-0.10, 0.63]) ---
   const cookLen = 0.73;
-  const cookZ = (-0.05 + 0.68) / 2; // 0.315
+  const cookZ = (-0.10 + 0.63) / 2; // 0.265
   const cookingDim = {
     label: "|-- 730 mm --|",
-    p1: [longEdgeX, 0.93, -0.05],
-    p2: [longEdgeX, 0.93, 0.68],
+    p1: [longEdgeX, 0.93, -0.10],
+    p2: [longEdgeX, 0.93, 0.63],
     axis: 'z'
   };
   addBox(counterDepth - 0.02, cabHeight, cookLen, matteBlackMat, baseMidX, cabMidY, cookZ, 0, cookingDim);
@@ -412,7 +412,7 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   });
   addBox(counterDepth, slabThick, cookLen, marbleMat, baseMidX, counterTopY - slabThick / 2, cookZ, 0, cookingDim);
 
-  // Modena Hob
+  // Modena Hob (730mm x 420mm)
   const hobDepthZ = 0.73;
   const hobWidthX = 0.42;
   const hobX = longWallX - 0.32;
@@ -452,20 +452,20 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   const hoodMidX = longWallX - hoodDepthX / 2;
   const hoodDim = {
     label: "|-- 730 mm --|",
-    p1: [longWallX - hoodDepthX - 0.01, hoodY + 0.04, -0.05],
-    p2: [longWallX - hoodDepthX - 0.01, hoodY + 0.04, 0.68],
+    p1: [longWallX - hoodDepthX - 0.01, hoodY + 0.04, -0.10],
+    p2: [longWallX - hoodDepthX - 0.01, hoodY + 0.04, 0.63],
     axis: 'z'
   };
   addBox(hoodDepthX, 0.06, cookLen, stainlessMat, hoodMidX, hoodY + 0.03, cookZ, 0, hoodDim);
   addBox(hoodDepthX - 0.04, 0.008, cookLen - 0.04, new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4, metalness: 0.9 }), hoodMidX, hoodY - 0.002, cookZ, 0, hoodDim);
 
-  // --- 2D. Microwave & Oak Tower (400mm: Z in [0.68, 1.08]) ---
-  const towerZ = (0.68 + 1.08) / 2; // 0.88m
-  const towerLen = 0.40;
+  // --- 2D. Microwave & Oak Tower (500mm realistic tower: Z in [0.63, 1.13]) ---
+  const towerZ = (0.63 + 1.13) / 2; // 0.88m
+  const towerLen = 0.50; // Sized to 500mm to house realistic 480mm microwave
   const towerDim = {
-    label: "|-- 400 mm --|",
-    p1: [longEdgeX, 0.93, 0.68],
-    p2: [longEdgeX, 0.93, 1.08],
+    label: "|-- 500 mm (Oak Tower) --|",
+    p1: [longEdgeX, 0.93, 0.63],
+    p2: [longEdgeX, 0.93, 1.13],
     axis: 'z'
   };
   addBox(counterDepth - 0.02, cabHeight, towerLen, matteBlackMat, baseMidX, cabMidY, towerZ);
@@ -473,44 +473,44 @@ export function buildKitchenSuite(scene, colliders, houseData) {
   addBox(0.025, 0.035, towerLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, towerZ);
   addBox(counterDepth, slabThick, towerLen, marbleMat, baseMidX, counterTopY - slabThick / 2, towerZ, 0, towerDim);
 
-  // Oak Vertical Panels & Shelves
+  // Oak Vertical Panels & Shelves (Width: 500mm)
   const oakDepthX = 0.38;
   const oakMidX = longWallX - oakDepthX / 2;
   const towerTotalH = 2.35 - counterTopY; // 1.45m
-  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 0.68 + 0.0125, 0, towerDim);
-  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 1.08 - 0.0125, 0, towerDim);
-  addBox(0.018, towerTotalH, 0.38, oakMat, longWallX - 0.01, counterTopY + towerTotalH / 2, towerZ, 0, towerDim);
+  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 0.63 + 0.0125, 0, towerDim);
+  addBox(oakDepthX, towerTotalH, 0.025, oakMat, oakMidX, counterTopY + towerTotalH / 2, 1.13 - 0.0125, 0, towerDim);
+  addBox(0.018, towerTotalH, 0.48, oakMat, longWallX - 0.01, counterTopY + towerTotalH / 2, towerZ, 0, towerDim);
 
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.05, towerZ, 0, towerDim);
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.48, towerZ, 0, towerDim);
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 1.90, towerZ, 0, towerDim);
-  addBox(oakDepthX, 0.025, 0.375, oakMat, oakMidX, 2.35, towerZ, 0, towerDim);
+  addBox(oakDepthX, 0.025, 0.475, oakMat, oakMidX, 1.05, towerZ, 0, towerDim);
+  addBox(oakDepthX, 0.025, 0.475, oakMat, oakMidX, 1.48, towerZ, 0, towerDim);
+  addBox(oakDepthX, 0.025, 0.475, oakMat, oakMidX, 1.90, towerZ, 0, towerDim);
+  addBox(oakDepthX, 0.025, 0.475, oakMat, oakMidX, 2.35, towerZ, 0, towerDim);
 
-  // Microwave Oven
-  const microW = 0.34;
-  const microH = 0.32;
-  const microD = 0.34;
+  // Realistic Standard Microwave Oven (480mm W x 360mm D x 300mm H)
+  const microW = 0.36; // depth into room
+  const microH = 0.30; // height
+  const microD = 0.48; // width along wall: 480 mm standard microwave!
   const microY = 1.05 + 0.0125 + microH / 2;
-  const microX = longWallX - 0.04 - microW / 2;
+  const microX = longWallX - 0.03 - microW / 2;
   const microDim = {
-    label: "|-- 340 mm --|",
+    label: "|-- 480 mm (Microwave) --|",
     p1: [microX - microW / 2 - 0.02, microY, towerZ - microD / 2],
     p2: [microX - microW / 2 - 0.02, microY, towerZ + microD / 2],
     axis: 'z'
   };
   addBox(microW, microH, microD, matteBlackMat, microX, microY, towerZ, 0, microDim);
-  addBox(0.01, microH - 0.04, microD * 0.68, smokedGlassMat, microX - microW / 2 - 0.005, microY, towerZ - 0.04, 0, microDim);
-  addBox(0.012, microH * 0.70, 0.012, stainlessMat, microX - microW / 2 - 0.015, microY, towerZ + 0.07);
-  addBox(0.008, 0.04, 0.08, new THREE.MeshBasicMaterial({ color: 0x00ffaa }), microX - microW / 2 - 0.005, microY + 0.09, towerZ + 0.11);
+  addBox(0.01, microH - 0.04, microD * 0.70, smokedGlassMat, microX - microW / 2 - 0.005, microY, towerZ - 0.05, 0, microDim);
+  addBox(0.012, microH * 0.70, 0.012, stainlessMat, microX - microW / 2 - 0.015, microY, towerZ + 0.12);
+  addBox(0.008, 0.04, 0.09, new THREE.MeshBasicMaterial({ color: 0x00ffaa }), microX - microW / 2 - 0.005, microY + 0.09, towerZ + 0.15);
 
   // Decor
   for (let ji = 0; ji < 2; ji++) {
-    const jarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.045, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.3 }));
-    jarMesh.position.set(mx(oakMidX), 1.48 + 0.0125 + 0.06, towerZ - 0.08 + ji * 0.16);
+    const jarMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.05, 0.12, 16), new THREE.MeshStandardMaterial({ color: 0xe8e4dc, roughness: 0.3 }));
+    jarMesh.position.set(mx(oakMidX), 1.48 + 0.0125 + 0.06, towerZ - 0.10 + ji * 0.20);
     registerItem(jarMesh, towerDim);
     kitchenGroup.add(jarMesh);
-    const lidMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.043, 0.043, 0.018, 16), oakMat);
-    lidMesh.position.set(mx(oakMidX), 1.48 + 0.0125 + 0.125, towerZ - 0.08 + ji * 0.16);
+    const lidMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.048, 0.048, 0.018, 16), oakMat);
+    lidMesh.position.set(mx(oakMidX), 1.48 + 0.0125 + 0.125, towerZ - 0.10 + ji * 0.20);
     kitchenGroup.add(lidMesh);
   }
 
@@ -533,12 +533,12 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     kitchenGroup.add(leaf);
   }
 
-  // --- 2E. Transition Buffer (270mm: Z in [1.08, 1.35]) ---
-  const transZ = (1.08 + 1.35) / 2; // 1.215m
-  const transLen = 0.27; // 27cm
+  // --- 2E. Transition Buffer (220mm: Z in [1.13, 1.35]) ---
+  const transZ = (1.13 + 1.35) / 2; // 1.24m
+  const transLen = 0.22; // 22cm
   const transDim = {
-    label: "|-- 270 mm --|",
-    p1: [longEdgeX, 0.93, 1.08],
+    label: "|-- 220 mm --|",
+    p1: [longEdgeX, 0.93, 1.13],
     p2: [longEdgeX, 0.93, 1.35],
     axis: 'z'
   };

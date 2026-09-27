@@ -53,14 +53,14 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
     },
     {
       id: "bedroom_1",
-      name: "Bedroom 1",
+      name: "Bedroom 1 (Gaming & WFH)",
       area: "7.0 m² (2.2m × 3.2m)",
       bounds: { ...bed1X, minZ: 2.05, maxZ: 5.25 },
       floorType: "wood_floor",
       wallColor: "#f7f5f0",
       hasCeiling: true,
       ceilingHeight: 3.0,
-      description: "Front bedroom (2.2m × 3.2m) with front garden window and kitchen door."
+      description: "Repurposable Gaming & WFH Studio (2.2m × 3.2m): 1.5m executive desk, 34\" ultrawide curved monitor, acoustic slat wall, and convertible lounge daybed / guest bed."
     },
     {
       id: "living",

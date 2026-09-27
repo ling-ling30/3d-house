@@ -10,6 +10,7 @@ import {
 } from './textures.js';
 import { buildFurniture } from './furnitureBuilder.js';
 import { buildKitchenSuite } from './kitchenBuilder.js';
+import { buildGamingRoom } from './gamingRoomBuilder.js';
 
 
 export function buildHouse(scene, houseData) {
@@ -450,9 +451,10 @@ export function buildHouse(scene, houseData) {
     });
   }
 
-  // Add Furnishings & Kitchen Suite
+  // Add Furnishings, Kitchen Suite & Bedroom 1 Multi-Purpose Gaming Room
   buildFurniture(houseGroup, colliders);
   const kitchenGroup = buildKitchenSuite(houseGroup, colliders, houseData);
+  const gamingRoomGroup = buildGamingRoom(houseGroup, colliders, houseData, kitchenGroup.userData.interactables);
 
   houseGroup.add(ceilingGroup);
   houseGroup.add(dimensionGroup);
@@ -464,6 +466,7 @@ export function buildHouse(scene, houseData) {
     ceilingGroup,
     dimensionGroup,
     kitchenGroup,
+    interactables: kitchenGroup.userData.interactables,
     rooms: houseData.rooms,
     playerSpawn: houseData.playerSpawn
   };

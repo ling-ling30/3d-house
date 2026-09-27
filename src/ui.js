@@ -69,7 +69,7 @@ export class UIManager {
       <div id="room-teleport-bar">
         <button class="room-pill active" data-room="carport">Carport (2.8×4.2m)</button>
         <button class="room-pill" data-room="front_garden">Front Garden (2.2×2m)</button>
-        <button class="room-pill" data-room="bedroom_1">Bedroom 1 (2.2×3.2m)</button>
+        <button class="room-pill" data-room="bedroom_1">Bedroom 1 (Gaming Room)</button>
         <button class="room-pill" data-room="living">Living Room (2.8×3.75m)</button>
         <button class="room-pill" data-room="kitchen_dining">Kitchen + Dining</button>
         <button class="room-pill" data-room="bathroom">Bathroom (2.2×1.8m)</button>
