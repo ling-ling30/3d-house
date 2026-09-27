@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { DEFAULT_HOUSE_DATA, getHouseData } from './houseData.js';
 import { buildHouse } from './houseBuilder.js';
 import { FPSController } from './fpsController.js';
-import { DollhouseController } from './orbitController.js';
+import { FreeCameraController } from './freeCameraController.js';
 import { LightingSystem } from './lighting.js';
 import { UIManager } from './ui.js';
 import { audio } from './audio.js';
@@ -12,9 +12,10 @@ class App {
     this.carportOnLeft = true;
     this.stripGardenSideWall = false;
     this.currentHouseData = getHouseData(this.carportOnLeft, this.stripGardenSideWall);
-    this.mode = 'dollhouse'; // Default to 3D Dollhouse overview
+    this.mode = 'free'; // Default to Free Fly mode
 
     this.showDimensions = false; // Hidden by default
+    this.roofVisible = true;
     this.muted = false;
 
     this.container = document.getElementById('canvas-container');
@@ -24,12 +25,11 @@ class App {
     this.initControllers();
     this.ui = new UIManager(this);
 
-    // Initial dollhouse camera looking down into the house from front street
-    this.camera.position.set(-1.5, 16.5, 15.5);
-    this.dollhouseController.setTarget(0.0, 0.5, 0.0);
-    this.dollhouseController.enable();
-    this.houseResult.ceilingGroup.visible = false;
-    this.ui.setModeUI('dollhouse');
+    // Initial free camera looking at the house from the front entrance
+    this.camera.position.set(-1.5, 4.5, 12.0);
+    this.freeCameraController.setTarget(0.0, 1.6, 0.0);
+    this.freeCameraController.enable();
+    this.ui.setModeUI('free');
 
     this.clock = new THREE.Clock();
     this.raycaster = new THREE.Raycaster();
@@ -92,8 +92,8 @@ class App {
     }
     this.houseResult = buildHouse(this.scene, this.currentHouseData);
     this.houseResult.dimensionGroup.visible = this.showDimensions;
-    if (this.mode === 'dollhouse') {
-      this.houseResult.ceilingGroup.visible = false;
+    if (this.houseResult.ceilingGroup) {
+      this.houseResult.ceilingGroup.visible = this.roofVisible;
     }
   }
 
@@ -111,41 +111,43 @@ class App {
       }
     };
 
-    this.dollhouseController = new DollhouseController(
+    this.freeCameraController = new FreeCameraController(
       this.camera,
       this.renderer.domElement
     );
   }
 
   setMode(newMode) {
+    // Normalise mode
+    if (newMode === 'dollhouse') newMode = 'free';
     if (this.mode === newMode) return;
     this.mode = newMode;
 
     if (newMode === 'walk') {
-      this.dollhouseController.disable();
-      this.houseResult.ceilingGroup.visible = true;
+      this.freeCameraController.disable();
+      if (this.houseResult.ceilingGroup) {
+        this.houseResult.ceilingGroup.visible = this.roofVisible;
+      }
 
-      // Teleport player to current target or spawn
+      // Smooth transition: position player at current camera X, Z coordinates
+      const camPos = this.camera.position;
       const curRoom = this.fpsController.getCurrentRoom();
-      if (curRoom && curRoom.bounds) {
-        const cx = (curRoom.bounds.minX + curRoom.bounds.maxX) / 2;
-        const cz = (curRoom.bounds.minZ + curRoom.bounds.maxZ) / 2;
-        this.fpsController.teleportTo(cx, cz);
+      if (curRoom && curRoom.id !== 'outside') {
+        this.fpsController.teleportTo(camPos.x, camPos.z);
       } else {
         const spawn = this.currentHouseData.playerSpawn;
         this.fpsController.teleportTo(spawn.x, spawn.z, spawn.rotY);
       }
 
       this.fpsController.enabled = true;
-    } else if (newMode === 'dollhouse') {
+    } else if (newMode === 'free') {
       this.fpsController.enabled = false;
       this.fpsController.unlock();
 
-      // Lift camera up and look down at center of house (isometric perspective)
-      this.houseResult.ceilingGroup.visible = false;
-      this.camera.position.set(1.5, 16.5, 15.5);
-      this.dollhouseController.setTarget(0.0, 0.5, 0.0);
-      this.dollhouseController.enable();
+      if (this.houseResult.ceilingGroup) {
+        this.houseResult.ceilingGroup.visible = this.roofVisible;
+      }
+      this.freeCameraController.enable();
     }
 
     this.ui.setModeUI(newMode);
@@ -157,11 +159,8 @@ class App {
     this.initHouse();
     this.initControllers();
 
-    if (this.mode === 'dollhouse') {
-      this.houseResult.ceilingGroup.visible = false;
-      this.camera.position.set(this.carportOnLeft ? -1.5 : 1.5, 16.5, 15.5);
-      this.dollhouseController.setTarget(0.0, 0.5, 0.0);
-      this.dollhouseController.enable();
+    if (this.mode === 'free') {
+      this.freeCameraController.enable();
     } else {
       const spawn = this.currentHouseData.playerSpawn;
       this.fpsController.teleportTo(spawn.x, spawn.z, spawn.rotY);
@@ -177,9 +176,8 @@ class App {
     this.initHouse();
     this.initControllers();
 
-    if (this.mode === 'dollhouse') {
-      this.houseResult.ceilingGroup.visible = false;
-      this.dollhouseController.enable();
+    if (this.mode === 'free') {
+      this.freeCameraController.enable();
     } else {
       const spawn = this.currentHouseData.playerSpawn;
       this.fpsController.teleportTo(spawn.x, spawn.z, spawn.rotY);
@@ -189,6 +187,13 @@ class App {
     return this.stripGardenSideWall;
   }
 
+  toggleRoof() {
+    this.roofVisible = !this.roofVisible;
+    if (this.houseResult && this.houseResult.ceilingGroup) {
+      this.houseResult.ceilingGroup.visible = this.roofVisible;
+    }
+    return this.roofVisible;
+  }
 
   setLighting(preset) {
     this.lighting.setPreset(preset);
@@ -222,7 +227,8 @@ class App {
       audio.playDoorOpen();
       this.fpsController.lock();
     } else {
-      this.dollhouseController.setTarget(cx, 0.5, cz);
+      // Free fly camera flies inside room at 1.8m height
+      this.freeCameraController.teleportTo(cx, 1.85, cz + 0.8, 0, -0.15);
     }
   }
 
@@ -231,7 +237,7 @@ class App {
       this.fpsController.teleportTo(x, z);
       this.fpsController.lock();
     } else {
-      this.dollhouseController.setTarget(x, 0.5, z);
+      this.freeCameraController.teleportTo(x, 3.2, z + 1.5, 0, -0.3);
     }
   }
 
@@ -260,8 +266,8 @@ class App {
 
     if (this.mode === 'walk') {
       this.fpsController.update(delta);
-    } else if (this.mode === 'dollhouse') {
-      this.dollhouseController.update();
+    } else {
+      this.freeCameraController.update(delta);
     }
 
     this.lighting.update(this.camera);

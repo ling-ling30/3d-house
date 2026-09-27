@@ -84,13 +84,13 @@ export class UIManager {
       <!-- Bottom Control Toolbar -->
       <footer id="hud-toolbar">
         <div class="toolbar-group">
-          <button id="btn-mode-dollhouse" class="tool-btn active" title="Overhead 3D Dollhouse View (SketchUp style)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-            <span>Dollhouse 3D</span>
+          <button id="btn-mode-free" class="tool-btn active" title="Free Camera Flight (Fly anywhere with WASD + Mouse / Mobile Swipe)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span>Free Fly</span>
           </button>
-          <button id="btn-mode-walk" class="tool-btn" title="Free Camera Walk (WASD + Mouse / Mobile Swipe)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 4v16"/><path d="M17 4v16"/><path d="M19 4H9.5a4.5 4.5 0 0 0 0 9H13"/></svg>
-            <span>Free Mode</span>
+          <button id="btn-mode-walk" class="tool-btn" title="Walk Mode (Ground eye-level walkthrough with wall collisions)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="m9 20 3-6 3 6"/><path d="m6 10 6 3 6-3"/></svg>
+            <span>Walk Mode</span>
           </button>
         </div>
 
@@ -111,6 +111,9 @@ export class UIManager {
         <div class="toolbar-divider"></div>
 
         <div class="toolbar-group">
+          <button id="btn-toggle-roof" class="tool-btn active" title="Toggle Ceiling & Roof Glass Visibility">
+            <span>🏠 Roof</span>
+          </button>
           <button id="btn-toggle-dimensions" class="tool-btn" title="Toggle Metric Dimension Lines">
             <span>📐 Dimensions</span>
           </button>
@@ -123,7 +126,7 @@ export class UIManager {
         </div>
       </footer>
 
-      <!-- Virtual Touch Joystick for Walk Mode -->
+      <!-- Virtual Touch Joystick for Free Fly & Walk Mode -->
       <div id="virtual-joystick" class="touch-ctrl" style="display: none;">
         <div id="joystick-base">
           <div id="joystick-knob"></div>
@@ -132,11 +135,15 @@ export class UIManager {
           <span class="j-dir j-lf">◀</span>
           <span class="j-dir j-rt">▶</span>
         </div>
-        <div class="j-label">SWIPE TO MOVE</div>
+        <div class="j-label">MOVE / FLY</div>
       </div>
 
-      <!-- Quick Turn & Swipe-to-Look Controls -->
+      <!-- Quick Turn & Altitude Controls -->
       <div id="touch-look-controls" class="touch-ctrl" style="display: none;">
+        <div id="altitude-controls" class="altitude-btns">
+          <button id="btn-altitude-up" class="turn-chip altitude-btn" title="Fly Up (Space / E)">▲ Up</button>
+          <button id="btn-altitude-down" class="turn-chip altitude-btn" title="Fly Down (C / Q)">▼ Down</button>
+        </div>
         <div class="look-turn-btns">
           <button id="btn-turn-left" class="turn-chip" title="Turn Left 45°">↺ 45°</button>
           <button id="btn-turn-right" class="turn-chip" title="Turn Right 45°">45° ↻</button>
@@ -176,7 +183,11 @@ export class UIManager {
     this.dom.overlay = document.getElementById('click-overlay');
     this.dom.btnStartWalk = document.getElementById('btn-start-walk');
     this.dom.btnModeWalk = document.getElementById('btn-mode-walk');
-    this.dom.btnModeDollhouse = document.getElementById('btn-mode-dollhouse');
+    this.dom.btnModeFree = document.getElementById('btn-mode-free') || document.getElementById('btn-mode-dollhouse');
+    this.dom.btnToggleRoof = document.getElementById('btn-toggle-roof');
+    this.dom.altitudeControls = document.getElementById('altitude-controls');
+    this.dom.btnAltitudeUp = document.getElementById('btn-altitude-up');
+    this.dom.btnAltitudeDown = document.getElementById('btn-altitude-down');
     this.dom.btnDay = document.getElementById('btn-preset-day');
     this.dom.btnSunset = document.getElementById('btn-preset-sunset');
     this.dom.btnNight = document.getElementById('btn-preset-night');
@@ -211,9 +222,42 @@ export class UIManager {
       this.app.fpsController.lock();
     });
 
-    this.dom.btnModeDollhouse.addEventListener('click', () => {
-      this.app.setMode('dollhouse');
-    });
+    if (this.dom.btnModeFree) {
+      this.dom.btnModeFree.addEventListener('click', () => {
+        this.app.setMode('free');
+      });
+    }
+
+    // Roof toggle
+    if (this.dom.btnToggleRoof) {
+      this.dom.btnToggleRoof.addEventListener('click', () => {
+        const vis = this.app.toggleRoof();
+        this.dom.btnToggleRoof.classList.toggle('active', vis);
+        this.dom.btnToggleRoof.querySelector('span').innerText = vis ? '🏠 Roof' : '🚫 No Roof';
+      });
+    }
+
+    // Altitude buttons hold-to-fly
+    const bindAltitudeHold = (el, val) => {
+      if (!el) return;
+      const start = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.app.freeCameraController.setAltitudeInput(val);
+      };
+      const stop = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        this.app.freeCameraController.setAltitudeInput(0);
+      };
+      el.addEventListener('mousedown', start);
+      window.addEventListener('mouseup', stop);
+      el.addEventListener('touchstart', start, { passive: false });
+      window.addEventListener('touchend', stop);
+      window.addEventListener('touchcancel', stop);
+    };
+    bindAltitudeHold(this.dom.btnAltitudeUp, 1.0);
+    bindAltitudeHold(this.dom.btnAltitudeDown, -1.0);
 
     // Lighting
     this.dom.btnDay.addEventListener('click', () => this.app.setLighting('day'));
@@ -257,7 +301,11 @@ export class UIManager {
     if (btnTurnL) {
       btnTurnL.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.app.fpsController.quickTurn(Math.PI / 4);
+        if (this.app.mode === 'walk') {
+          this.app.fpsController.quickTurn(Math.PI / 4);
+        } else {
+          this.app.freeCameraController.quickTurn(Math.PI / 4);
+        }
       });
     }
 
@@ -265,7 +313,11 @@ export class UIManager {
     if (btnTurnR) {
       btnTurnR.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.app.fpsController.quickTurn(-Math.PI / 4);
+        if (this.app.mode === 'walk') {
+          this.app.fpsController.quickTurn(-Math.PI / 4);
+        } else {
+          this.app.freeCameraController.quickTurn(-Math.PI / 4);
+        }
       });
     }
 
@@ -378,11 +430,27 @@ export class UIManager {
 
       this.dom.coordsText.innerText = `X: ${playerX.toFixed(1)}m | Z: ${playerZ.toFixed(1)}m`;
     } else {
-      // Dollhouse mode
+      // Free Flight mode
       const cam = this.app.camera.position;
-      this.dom.currentRoomName.innerText = "Dollhouse 3D Overview";
-      this.dom.roomArea.innerText = "5.00m × 14.50m Lot";
-      this.dom.coordsText.innerText = "Architectural Model";
+      playerX = cam.x;
+      playerZ = cam.z;
+      headingAngle = (this.app.freeCameraController && typeof this.app.freeCameraController.getYaw === 'function')
+        ? this.app.freeCameraController.getYaw()
+        : this.app.camera.rotation.y;
+
+      const currentRoom = this.app.fpsController.getRoomAt(playerX, playerZ);
+      if (currentRoom && currentRoom.id !== 'outside') {
+        this.dom.currentRoomName.innerText = `Free Fly: ${currentRoom.name}`;
+        this.dom.roomArea.innerText = currentRoom.area;
+        this.dom.roomPills.forEach(pill => {
+          pill.classList.toggle('active', pill.getAttribute('data-room') === currentRoom.id);
+        });
+      } else {
+        this.dom.currentRoomName.innerText = "Free Fly Camera";
+        this.dom.roomArea.innerText = "6-DOF Aerial Flight";
+      }
+
+      this.dom.coordsText.innerText = `X: ${playerX.toFixed(1)}m | Y: ${cam.y.toFixed(1)}m | Z: ${playerZ.toFixed(1)}m`;
     }
 
     this.renderMinimap(playerX, playerZ, headingAngle);
@@ -456,46 +524,52 @@ export class UIManager {
       ctx.fillText(shortName, p1.x + rw / 2, p1.y + rh / 2 + 3);
     });
 
-    // Draw player position in Walk mode
-    if (this.app.mode === 'walk') {
-      const playerMapPos = this.worldToMinimap(playerX, playerZ);
+    // Draw camera / player position on map in both Free Fly and Walk mode
+    const playerMapPos = this.worldToMinimap(playerX, playerZ);
 
-      // Vision cone
-      ctx.save();
-      ctx.translate(playerMapPos.x, playerMapPos.y);
-      const mapAngle = -headingAngle - Math.PI / 2;
-      ctx.rotate(mapAngle);
+    // Vision cone
+    ctx.save();
+    ctx.translate(playerMapPos.x, playerMapPos.y);
+    const mapAngle = -headingAngle - Math.PI / 2;
+    ctx.rotate(mapAngle);
 
-      ctx.fillStyle = 'rgba(245, 158, 11, 0.35)';
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.arc(0, 0, 26, -Math.PI / 4, Math.PI / 4);
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
+    ctx.fillStyle = this.app.mode === 'free' ? 'rgba(56, 189, 248, 0.40)' : 'rgba(245, 158, 11, 0.40)';
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, 26, -Math.PI / 4, Math.PI / 4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
 
-      // Player dot
-      ctx.fillStyle = '#f59e0b';
-      ctx.beginPath();
-      ctx.arc(playerMapPos.x, playerMapPos.y, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
+    // Position dot
+    ctx.fillStyle = this.app.mode === 'free' ? '#38bdf8' : '#f59e0b';
+    ctx.beginPath();
+    ctx.arc(playerMapPos.x, playerMapPos.y, 4.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
   }
 
   setModeUI(mode) {
-    this.dom.btnModeWalk.classList.toggle('active', mode === 'walk');
-    this.dom.btnModeDollhouse.classList.toggle('active', mode === 'dollhouse');
+    if (this.dom.btnModeWalk) this.dom.btnModeWalk.classList.toggle('active', mode === 'walk');
+    if (this.dom.btnModeFree) this.dom.btnModeFree.classList.toggle('active', mode === 'free');
+
     const crosshair = document.getElementById('crosshair');
     if (crosshair) crosshair.style.display = mode === 'walk' ? 'block' : 'none';
 
+    // Touch joystick available for both Free Fly and Walk Mode
     const joystick = document.getElementById('virtual-joystick');
-    if (joystick) joystick.style.display = mode === 'walk' ? 'flex' : 'none';
+    if (joystick) joystick.style.display = 'flex';
 
+    // Touch look controls available for both Free Fly and Walk Mode
     const lookControls = document.getElementById('touch-look-controls');
-    if (lookControls) lookControls.style.display = mode === 'walk' ? 'flex' : 'none';
+    if (lookControls) lookControls.style.display = 'flex';
+
+    // Altitude buttons visible only in Free Fly mode
+    if (this.dom.altitudeControls) {
+      this.dom.altitudeControls.style.display = mode === 'free' ? 'flex' : 'none';
+    }
 
     // Keep intrusive modal overlay hidden
     if (this.dom.overlay) {
@@ -512,21 +586,23 @@ export class UIManager {
       hint.id = 'walk-mode-toast';
       document.body.appendChild(hint);
     }
-    if (mode === 'walk') {
-      const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (mode === 'free') {
       hint.innerText = isTouch
-        ? '👉 Swipe screen to look • Drag bottom-left pad to walk'
-        : '🎮 Free Mode: WASD to walk • Mouse to look around • Shift to sprint';
-      hint.style.display = 'block';
-      hint.style.opacity = '1';
-      clearTimeout(this.hintTimeout);
-      this.hintTimeout = setTimeout(() => {
-        hint.style.opacity = '0';
-        setTimeout(() => { hint.style.display = 'none'; }, 500);
-      }, 4000);
+        ? '✈️ Free Fly: Joystick to fly • Swipe to look • Up/Down for altitude'
+        : '✈️ Free Fly: WASD to fly • Mouse/Drag to look • Space/C altitude • Shift turbo';
     } else {
-      hint.style.display = 'none';
+      hint.innerText = isTouch
+        ? '🚶 Walk Mode: Left pad to walk • Swipe screen to look around'
+        : '🚶 Walk Mode: WASD to walk • Mouse to look around • Shift to sprint';
     }
+    hint.style.display = 'block';
+    hint.style.opacity = '1';
+    clearTimeout(this.hintTimeout);
+    this.hintTimeout = setTimeout(() => {
+      hint.style.opacity = '0';
+      setTimeout(() => { hint.style.display = 'none'; }, 500);
+    }, 4500);
   }
 
   setLightingUI(preset) {
