@@ -371,17 +371,19 @@ export class FPSController {
     return false;
   }
 
-  getCurrentRoom() {
-    const x = this.camera.position.x;
-    const z = this.camera.position.z;
-
+  getRoomAt(x, z) {
+    if (!this.rooms) return { name: "House Grounds", id: "outside", area: "" };
     for (let r of this.rooms) {
       const b = r.bounds;
-      if (x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
+      if (b && x >= b.minX && x <= b.maxX && z >= b.minZ && z <= b.maxZ) {
         return r;
       }
     }
     return { name: "House Grounds", id: "outside", area: "" };
+  }
+
+  getCurrentRoom() {
+    return this.getRoomAt(this.camera.position.x, this.camera.position.z);
   }
 
   getPosition() {

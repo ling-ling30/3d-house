@@ -138,12 +138,8 @@ export class UIManager {
         <div class="j-label">MOVE / FLY</div>
       </div>
 
-      <!-- Quick Turn & Altitude Controls -->
+      <!-- Quick Turn & Swipe-to-Look Controls -->
       <div id="touch-look-controls" class="touch-ctrl" style="display: none;">
-        <div id="altitude-controls" class="altitude-btns">
-          <button id="btn-altitude-up" class="turn-chip altitude-btn" title="Fly Up (Space / E)">▲ Up</button>
-          <button id="btn-altitude-down" class="turn-chip altitude-btn" title="Fly Down (C / Q)">▼ Down</button>
-        </div>
         <div class="look-turn-btns">
           <button id="btn-turn-left" class="turn-chip" title="Turn Left 45°">↺ 45°</button>
           <button id="btn-turn-right" class="turn-chip" title="Turn Right 45°">45° ↻</button>
@@ -185,9 +181,6 @@ export class UIManager {
     this.dom.btnModeWalk = document.getElementById('btn-mode-walk');
     this.dom.btnModeFree = document.getElementById('btn-mode-free') || document.getElementById('btn-mode-dollhouse');
     this.dom.btnToggleRoof = document.getElementById('btn-toggle-roof');
-    this.dom.altitudeControls = document.getElementById('altitude-controls');
-    this.dom.btnAltitudeUp = document.getElementById('btn-altitude-up');
-    this.dom.btnAltitudeDown = document.getElementById('btn-altitude-down');
     this.dom.btnDay = document.getElementById('btn-preset-day');
     this.dom.btnSunset = document.getElementById('btn-preset-sunset');
     this.dom.btnNight = document.getElementById('btn-preset-night');
@@ -225,6 +218,7 @@ export class UIManager {
     if (this.dom.btnModeFree) {
       this.dom.btnModeFree.addEventListener('click', () => {
         this.app.setMode('free');
+        this.app.freeCameraController.lock();
       });
     }
 
@@ -236,28 +230,6 @@ export class UIManager {
         this.dom.btnToggleRoof.querySelector('span').innerText = vis ? '🏠 Roof' : '🚫 No Roof';
       });
     }
-
-    // Altitude buttons hold-to-fly
-    const bindAltitudeHold = (el, val) => {
-      if (!el) return;
-      const start = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.app.freeCameraController.setAltitudeInput(val);
-      };
-      const stop = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        this.app.freeCameraController.setAltitudeInput(0);
-      };
-      el.addEventListener('mousedown', start);
-      window.addEventListener('mouseup', stop);
-      el.addEventListener('touchstart', start, { passive: false });
-      window.addEventListener('touchend', stop);
-      window.addEventListener('touchcancel', stop);
-    };
-    bindAltitudeHold(this.dom.btnAltitudeUp, 1.0);
-    bindAltitudeHold(this.dom.btnAltitudeDown, -1.0);
 
     // Lighting
     this.dom.btnDay.addEventListener('click', () => this.app.setLighting('day'));
@@ -438,10 +410,16 @@ export class UIManager {
         ? this.app.freeCameraController.getYaw()
         : this.app.camera.rotation.y;
 
-      const currentRoom = this.app.fpsController.getRoomAt(playerX, playerZ);
+      let currentRoom = null;
+      if (this.app.fpsController && typeof this.app.fpsController.getRoomAt === 'function') {
+        currentRoom = this.app.fpsController.getRoomAt(playerX, playerZ);
+      } else if (this.app.fpsController && typeof this.app.fpsController.getCurrentRoom === 'function') {
+        currentRoom = this.app.fpsController.getCurrentRoom();
+      }
+
       if (currentRoom && currentRoom.id !== 'outside') {
         this.dom.currentRoomName.innerText = `Free Fly: ${currentRoom.name}`;
-        this.dom.roomArea.innerText = currentRoom.area;
+        this.dom.roomArea.innerText = currentRoom.area || '';
         this.dom.roomPills.forEach(pill => {
           pill.classList.toggle('active', pill.getAttribute('data-room') === currentRoom.id);
         });
@@ -556,7 +534,7 @@ export class UIManager {
     if (this.dom.btnModeFree) this.dom.btnModeFree.classList.toggle('active', mode === 'free');
 
     const crosshair = document.getElementById('crosshair');
-    if (crosshair) crosshair.style.display = mode === 'walk' ? 'block' : 'none';
+    if (crosshair) crosshair.style.display = 'block';
 
     // Touch joystick available for both Free Fly and Walk Mode
     const joystick = document.getElementById('virtual-joystick');
@@ -565,11 +543,6 @@ export class UIManager {
     // Touch look controls available for both Free Fly and Walk Mode
     const lookControls = document.getElementById('touch-look-controls');
     if (lookControls) lookControls.style.display = 'flex';
-
-    // Altitude buttons visible only in Free Fly mode
-    if (this.dom.altitudeControls) {
-      this.dom.altitudeControls.style.display = mode === 'free' ? 'flex' : 'none';
-    }
 
     // Keep intrusive modal overlay hidden
     if (this.dom.overlay) {
@@ -589,8 +562,8 @@ export class UIManager {
     const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
     if (mode === 'free') {
       hint.innerText = isTouch
-        ? '✈️ Free Fly: Joystick to fly • Swipe to look • Up/Down for altitude'
-        : '✈️ Free Fly: WASD to fly • Mouse/Drag to look • Space/C altitude • Shift turbo';
+        ? '✈️ Free Fly: Aim by swiping • Push joystick forward to fly where you look'
+        : '✈️ Free Fly: WASD to fly where you look • Move mouse to aim • Shift to boost';
     } else {
       hint.innerText = isTouch
         ? '🚶 Walk Mode: Left pad to walk • Swipe screen to look around'

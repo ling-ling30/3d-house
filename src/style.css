@@ -616,21 +616,6 @@ body, html {
   pointer-events: auto;
 }
 
-.altitude-btns {
-  display: flex;
-  gap: 8px;
-}
-
-.altitude-btn {
-  background: rgba(14, 116, 144, 0.85);
-  border-color: rgba(56, 189, 248, 0.4);
-  color: #e0f2fe;
-}
-
-.altitude-btn:active {
-  background: #38bdf8;
-  color: #0b0f17;
-}
 
 .look-turn-btns {
   display: flex;
