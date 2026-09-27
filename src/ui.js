@@ -35,11 +35,13 @@ export class UIManager {
       <!-- Minimap Container -->
       <div id="minimap-wrapper">
         <div class="minimap-header">
-          <span>FLOOR PLAN (5m × 14.5m)</span>
+          <span>FLOOR PLAN</span>
           <span class="minimap-hint">Click to jump</span>
+          <button id="btn-toggle-minimap" class="minimap-toggle-btn" title="Toggle Minimap">✕</button>
         </div>
-        <canvas id="minimap-canvas" width="180" height="340"></canvas>
+        <canvas id="minimap-canvas" width="160" height="300"></canvas>
       </div>
+      <button id="btn-floating-map" class="floating-map-btn" style="display: none;" title="Open Floor Plan">🗺️ Plan</button>
 
       <!-- Click to Enter Walk Mode Overlay -->
       <div id="click-overlay" class="hidden">
@@ -121,21 +123,25 @@ export class UIManager {
         </div>
       </footer>
 
-      <!-- On-Screen Navigation D-Pad -->
-      <div id="touch-dpad" style="display: none;">
-        <div class="dpad-title">CONTROLS (WASD / QE)</div>
-        <div class="dpad-grid">
-          <div></div>
-          <button id="dpad-fwd" class="dpad-btn" title="Walk Forward (W)">▲</button>
-          <div></div>
-          <button id="dpad-left" class="dpad-btn" title="Strafe Left (A)">◀</button>
-          <button id="dpad-back" class="dpad-btn" title="Walk Backward (S)">▼</button>
-          <button id="dpad-right" class="dpad-btn" title="Strafe Right (D)">▶</button>
+      <!-- Virtual Touch Joystick for Walk Mode -->
+      <div id="virtual-joystick" class="touch-ctrl" style="display: none;">
+        <div id="joystick-base">
+          <div id="joystick-knob"></div>
+          <span class="j-dir j-up">▲</span>
+          <span class="j-dir j-dn">▼</span>
+          <span class="j-dir j-lf">◀</span>
+          <span class="j-dir j-rt">▶</span>
         </div>
-        <div class="dpad-turn-row">
-          <button id="dpad-turn-l" class="dpad-btn turn-btn" title="Turn Left (Q)">↺ Turn</button>
-          <button id="dpad-turn-r" class="dpad-btn turn-btn" title="Turn Right (E)">Turn ↻</button>
+        <div class="j-label">SWIPE TO MOVE</div>
+      </div>
+
+      <!-- Quick Turn & Swipe-to-Look Controls -->
+      <div id="touch-look-controls" class="touch-ctrl" style="display: none;">
+        <div class="look-turn-btns">
+          <button id="btn-turn-left" class="turn-chip" title="Turn Left 45°">↺ 45°</button>
+          <button id="btn-turn-right" class="turn-chip" title="Turn Right 45°">45° ↻</button>
         </div>
+        <div class="look-hint-pill">👉 Swipe screen to look around</div>
       </div>
 
       <!-- Custom Plan / Measurements Editor Modal -->
@@ -246,28 +252,41 @@ export class UIManager {
       this.app.teleportToCoords(worldPos.x, worldPos.z);
     });
 
-    // D-Pad Touch / Click handlers
-    const setupDpadBtn = (id, onDown, onUp) => {
-      const el = document.getElementById(id);
-      if (!el) return;
-      el.addEventListener('pointerdown', (e) => {
-        e.preventDefault();
-        if (this.app.mode !== 'walk') this.app.setMode('walk');
-        onDown();
+    // Quick Turn buttons (45 degree snappy turn)
+    const btnTurnL = document.getElementById('btn-turn-left');
+    if (btnTurnL) {
+      btnTurnL.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.app.fpsController.quickTurn(Math.PI / 4);
       });
-      el.addEventListener('pointerup', (e) => {
-        e.preventDefault();
-        onUp();
-      });
-      el.addEventListener('pointerleave', () => onUp());
-    };
+    }
 
-    setupDpadBtn('dpad-fwd', () => { this.app.fpsController.moveForward = true; }, () => { this.app.fpsController.moveForward = false; });
-    setupDpadBtn('dpad-back', () => { this.app.fpsController.moveBackward = true; }, () => { this.app.fpsController.moveBackward = false; });
-    setupDpadBtn('dpad-left', () => { this.app.fpsController.moveLeft = true; }, () => { this.app.fpsController.moveLeft = false; });
-    setupDpadBtn('dpad-right', () => { this.app.fpsController.moveRight = true; }, () => { this.app.fpsController.moveRight = false; });
-    setupDpadBtn('dpad-turn-l', () => { this.app.fpsController.turnLeft = true; }, () => { this.app.fpsController.turnLeft = false; });
-    setupDpadBtn('dpad-turn-r', () => { this.app.fpsController.turnRight = true; }, () => { this.app.fpsController.turnRight = false; });
+    const btnTurnR = document.getElementById('btn-turn-right');
+    if (btnTurnR) {
+      btnTurnR.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.app.fpsController.quickTurn(-Math.PI / 4);
+      });
+    }
+
+    // Minimap toggle for clean mobile screen
+    const btnToggleMap = document.getElementById('btn-toggle-minimap');
+    const btnFloatMap = document.getElementById('btn-floating-map');
+    const mapWrap = document.getElementById('minimap-wrapper');
+
+    if (btnToggleMap && btnFloatMap && mapWrap) {
+      btnToggleMap.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mapWrap.style.display = 'none';
+        btnFloatMap.style.display = 'flex';
+      });
+
+      btnFloatMap.addEventListener('click', (e) => {
+        e.stopPropagation();
+        mapWrap.style.display = 'flex';
+        btnFloatMap.style.display = 'none';
+      });
+    }
 
     // Plan Editor Modal
     this.dom.btnCustomPlan.addEventListener('click', () => {
@@ -472,8 +491,11 @@ export class UIManager {
     const crosshair = document.getElementById('crosshair');
     if (crosshair) crosshair.style.display = mode === 'walk' ? 'block' : 'none';
 
-    const dpad = document.getElementById('touch-dpad');
-    if (dpad) dpad.style.display = mode === 'walk' ? 'flex' : 'none';
+    const joystick = document.getElementById('virtual-joystick');
+    if (joystick) joystick.style.display = mode === 'walk' ? 'flex' : 'none';
+
+    const lookControls = document.getElementById('touch-look-controls');
+    if (lookControls) lookControls.style.display = mode === 'walk' ? 'flex' : 'none';
 
     if (mode === 'dollhouse') {
       this.dom.overlay.classList.add('hidden');

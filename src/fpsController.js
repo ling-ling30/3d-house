@@ -43,6 +43,18 @@ export class FPSController {
     this.prevMouseY = 0;
     this.euler = new THREE.Euler(0, 0, 0, 'YXZ');
 
+    // Mobile Touch & Swipe control state
+    this.touchLookId = null;
+    this.touchLookPrevX = 0;
+    this.touchLookPrevY = 0;
+
+    this.touchMoveId = null;
+    this.touchMoveOriginX = 0;
+    this.touchMoveOriginY = 0;
+    this.inputForward = 0;
+    this.inputStrafe = 0;
+    this.joystickKnob = null;
+
     this.setupListeners();
   }
 
@@ -143,20 +155,135 @@ export class FPSController {
       this.isMouseDown = false;
     };
 
+    // Mobile Touch & Swipe Event Handlers
+    this.onTouchStart = (e) => {
+      if (!this.enabled) return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+        const target = touch.target;
+
+        // Don't capture touches on HUD toolbar, minimap, room pills, or dialogs
+        if (target.closest('#hud-toolbar') || target.closest('#minimap-wrapper') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
+          continue;
+        }
+
+        const isLeftZone = touch.clientX < window.innerWidth * 0.45 && touch.clientY > window.innerHeight * 0.35;
+        const isJoystick = target.closest('#virtual-joystick');
+
+        if ((isJoystick || isLeftZone) && this.touchMoveId === null) {
+          // Touch in move zone -> initialize virtual joystick movement
+          this.touchMoveId = touch.identifier;
+          this.touchMoveOriginX = touch.clientX;
+          this.touchMoveOriginY = touch.clientY;
+          this.updateJoystickUI(0, 0);
+        } else if (this.touchLookId === null) {
+          // Touch in look zone -> swipe to look around
+          this.touchLookId = touch.identifier;
+          this.touchLookPrevX = touch.clientX;
+          this.touchLookPrevY = touch.clientY;
+        }
+      }
+    };
+
+    this.onTouchMove = (e) => {
+      if (!this.enabled) return;
+
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+
+        if (touch.identifier === this.touchLookId) {
+          const deltaX = touch.clientX - this.touchLookPrevX;
+          const deltaY = touch.clientY - this.touchLookPrevY;
+          this.touchLookPrevX = touch.clientX;
+          this.touchLookPrevY = touch.clientY;
+
+          this.euler.setFromQuaternion(this.camera.quaternion);
+          // Swiping horizontally rotates yaw smoothly
+          this.euler.y -= deltaX * 0.0045;
+          // Swiping vertically tilts pitch
+          this.euler.x -= deltaY * 0.0035;
+          this.euler.x = Math.max(-Math.PI / 2 + 0.15, Math.min(Math.PI / 2 - 0.15, this.euler.x));
+          this.camera.quaternion.setFromEuler(this.euler);
+        } else if (touch.identifier === this.touchMoveId) {
+          const dx = touch.clientX - this.touchMoveOriginX;
+          const dy = touch.clientY - this.touchMoveOriginY;
+          const maxRadius = 45; // max stick distance in pixels
+          const dist = Math.hypot(dx, dy);
+          const clampedDist = Math.min(dist, maxRadius);
+          const angle = Math.atan2(dy, dx);
+
+          const knobX = Math.cos(angle) * clampedDist;
+          const knobY = Math.sin(angle) * clampedDist;
+          this.updateJoystickUI(knobX, knobY);
+
+          // Normalize values
+          this.inputStrafe = knobX / maxRadius;
+          this.inputForward = -knobY / maxRadius; // Upward drag moves forward
+        }
+      }
+    };
+
+    this.onTouchEnd = (e) => {
+      for (let i = 0; i < e.changedTouches.length; i++) {
+        const touch = e.changedTouches[i];
+
+        if (touch.identifier === this.touchLookId) {
+          this.touchLookId = null;
+        } else if (touch.identifier === this.touchMoveId) {
+          this.touchMoveId = null;
+          this.inputForward = 0;
+          this.inputStrafe = 0;
+          this.updateJoystickUI(0, 0);
+        }
+      }
+    };
+
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     this.domElement.addEventListener('click', this.onCanvasClick);
     window.addEventListener('mousedown', this.onMouseDown);
     window.addEventListener('mousemove', this.onMouseMove);
     window.addEventListener('mouseup', this.onMouseUp);
+
+    window.addEventListener('touchstart', this.onTouchStart, { passive: true });
+    window.addEventListener('touchmove', this.onTouchMove, { passive: true });
+    window.addEventListener('touchend', this.onTouchEnd, { passive: true });
+    window.addEventListener('touchcancel', this.onTouchEnd, { passive: true });
+  }
+
+  updateJoystickUI(knobX, knobY) {
+    if (!this.joystickKnob) {
+      this.joystickKnob = document.getElementById('joystick-knob');
+    }
+    if (this.joystickKnob) {
+      this.joystickKnob.style.transform = `translate(calc(-50% + ${knobX}px), calc(-50% + ${knobY}px))`;
+    }
+  }
+
+  quickTurn(angleRadians) {
+    this.euler.setFromQuaternion(this.camera.quaternion);
+    this.euler.y += angleRadians;
+    this.camera.quaternion.setFromEuler(this.euler);
   }
 
   lock() {
-    this.controls.lock();
+    const isTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+    if (!isTouch) {
+      try {
+        this.controls.lock();
+      } catch (err) {
+        console.warn('PointerLock not available:', err);
+      }
+    }
   }
 
   unlock() {
-    this.controls.unlock();
+    try {
+      this.controls.unlock();
+    } catch {
+      // safe fallback
+    }
   }
 
   isLocked() {
@@ -239,8 +366,16 @@ export class FPSController {
     this.velocity.z -= this.velocity.z * damping * delta;
 
     // Direction calculation
-    const fwdVal = Number(this.moveForward) - Number(this.moveBackward);
-    const sideVal = Number(this.moveRight) - Number(this.moveLeft);
+    let fwdVal = Number(this.moveForward) - Number(this.moveBackward);
+    let sideVal = Number(this.moveRight) - Number(this.moveLeft);
+
+    // Blend touch joystick analog inputs
+    if (Math.abs(this.inputForward) > 0.05) {
+      fwdVal = this.inputForward;
+    }
+    if (Math.abs(this.inputStrafe) > 0.05) {
+      sideVal = this.inputStrafe;
+    }
 
     // Forward direction on horizontal XZ plane
     const forward = new THREE.Vector3();
@@ -253,15 +388,17 @@ export class FPSController {
     right.crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
 
     const moveVector = new THREE.Vector3();
-    if (fwdVal !== 0) {
+    if (Math.abs(fwdVal) > 0.01) {
       moveVector.addScaledVector(forward, fwdVal);
     }
-    if (sideVal !== 0) {
+    if (Math.abs(sideVal) > 0.01) {
       moveVector.addScaledVector(right, sideVal);
     }
 
     if (moveVector.lengthSq() > 0.001) {
-      moveVector.normalize();
+      if (moveVector.length() > 1.0) {
+        moveVector.normalize();
+      }
       this.velocity.x += moveVector.x * currentSpeed * 12.0 * delta;
       this.velocity.z += moveVector.z * currentSpeed * 12.0 * delta;
     }
