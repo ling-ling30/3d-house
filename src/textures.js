@@ -604,4 +604,42 @@ export function createGlassRoughnessMap() {
   return texture;
 }
 
+// Textured Gray Cement Stucco Plaster for Boundary Walls (matching media_1790525894123.png)
+export function createStuccoTexture() {
+  const canvas = document.createElement('canvas');
+  canvas.width = 512;
+  canvas.height = 512;
+  const ctx = canvas.getContext('2d');
+
+  // Base raw concrete plaster tone
+  ctx.fillStyle = '#7a7f85';
+  ctx.fillRect(0, 0, 512, 512);
+
+  // Subtle trowel sweep texture
+  for (let y = 0; y < 512; y += 8) {
+    const shift = (Math.sin(y * 0.08) * 0.5 + 0.5) * 14 - 7;
+    const r = Math.round(122 + shift);
+    const g = Math.round(127 + shift);
+    const b = Math.round(133 + shift);
+    ctx.fillStyle = `rgba(${r}, ${g}, ${b}, 0.6)`;
+    ctx.fillRect(0, y, 512, 8);
+  }
+
+  // Plaster grit & porosity
+  for (let i = 0; i < 6000; i++) {
+    const x = Math.random() * 512;
+    const y = Math.random() * 512;
+    const dark = Math.random() > 0.5;
+    ctx.fillStyle = dark ? 'rgba(0, 0, 0, 0.12)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.fillRect(x, y, 1.5, 1.5);
+  }
+
+  const texture = new THREE.CanvasTexture(canvas);
+  texture.wrapS = THREE.RepeatWrapping;
+  texture.wrapT = THREE.RepeatWrapping;
+  texture.repeat.set(3, 3);
+  return texture;
+}
+
+
 
