@@ -11,6 +11,7 @@ import {
 import { buildFurniture } from './furnitureBuilder.js';
 import { buildKitchenSuite } from './kitchenBuilder.js';
 import { buildGamingRoom } from './gamingRoomBuilder.js';
+import { buildGardenRailing } from './gardenRailingBuilder.js';
 
 
 export function buildHouse(scene, houseData) {
@@ -451,10 +452,11 @@ export function buildHouse(scene, houseData) {
     });
   }
 
-  // Add Furnishings, Kitchen Suite & Bedroom 1 Multi-Purpose Gaming Room
+  // Add Furnishings, Kitchen Suite, Gaming Room & Garden Glass Railing
   buildFurniture(houseGroup, colliders);
   const kitchenGroup = buildKitchenSuite(houseGroup, colliders, houseData);
   const gamingRoomGroup = buildGamingRoom(houseGroup, colliders, houseData, kitchenGroup.userData.interactables);
+  const gardenRailingGroup = buildGardenRailing(houseGroup, colliders, houseData, kitchenGroup.userData.interactables);
 
   houseGroup.add(ceilingGroup);
   houseGroup.add(dimensionGroup);
