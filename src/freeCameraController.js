@@ -156,7 +156,7 @@ export class FreeCameraController {
     // Canvas click locks pointer for instant mouse look
     this.onCanvasClick = (e) => {
       if (!this.enabled) return;
-      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
+      if (e.target.closest('#hud-toolbar') || e.target.closest('#hud-header') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
       if (!this.isLocked) {
@@ -173,7 +173,7 @@ export class FreeCameraController {
     // Mouse drag-to-look (fallback or when pointer isn't locked)
     this.onMouseDown = (e) => {
       if (!this.enabled) return;
-      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
+      if (e.target.closest('#hud-toolbar') || e.target.closest('#hud-header') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
       this.isMouseDown = true;
@@ -266,7 +266,7 @@ export class FreeCameraController {
         const touch = e.changedTouches[i];
         const target = touch.target;
 
-        if (target.closest('#hud-toolbar') || target.closest('#minimap-wrapper') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
+        if (target.closest('#hud-toolbar') || target.closest('#hud-header') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
           continue;
         }
 

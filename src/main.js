@@ -12,7 +12,7 @@ class App {
     this.carportOnLeft = true;
     this.stripGardenSideWall = false;
     this.currentHouseData = getHouseData(this.carportOnLeft, this.stripGardenSideWall);
-    this.mode = 'free'; // Default to Free Fly mode
+    this.mode = 'walk'; // Default to Walk Mode
 
     this.showDimensions = false; // Hidden by default
     this.roofVisible = true;
@@ -25,11 +25,15 @@ class App {
     this.initControllers();
     this.ui = new UIManager(this);
 
-    // Initial free camera looking at the house from the front entrance
-    this.camera.position.set(-1.5, 4.5, 12.0);
-    this.freeCameraController.setTarget(0.0, 1.6, 0.0);
-    this.freeCameraController.enable();
-    this.ui.setModeUI('free');
+    // Initial walk mode: spawn player directly into the house
+    const spawn = this.currentHouseData.playerSpawn;
+    this.fpsController.teleportTo(spawn.x, spawn.z, spawn.rotY);
+    this.fpsController.enabled = true;
+    this.freeCameraController.disable();
+    if (this.houseResult.ceilingGroup) {
+      this.houseResult.ceilingGroup.visible = this.roofVisible;
+    }
+    this.ui.setModeUI('walk');
 
     this.clock = new THREE.Clock();
     this.raycaster = new THREE.Raycaster();
@@ -63,13 +67,40 @@ class App {
     requestAnimationFrame(this.animate);
 
     window.addEventListener('resize', () => this.onWindowResize());
+
+    // Interactive furniture keyboard triggers (F or E key)
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyF' || e.code === 'KeyE') {
+        if (this.triggerInteraction()) {
+          e.preventDefault();
+        }
+      }
+    });
+
+    // Interactive furniture click trigger
+    this.renderer.domElement.addEventListener('pointerdown', (e) => {
+      if (e.button === 0 && this.targetedInteractable) {
+        this.triggerInteraction();
+      }
+    });
+  }
+
+  triggerInteraction() {
+    if (this.targetedInteractable && typeof this.targetedInteractable.toggle === 'function') {
+      this.targetedInteractable.toggle();
+      if (this.ui) {
+        this.ui.showInteractionPrompt(this.targetedInteractable.getPromptText());
+      }
+      return true;
+    }
+    return false;
   }
 
   initThree() {
     this.scene = new THREE.Scene();
 
     this.camera = new THREE.PerspectiveCamera(
-      65,
+      50, // 50° FOV gives natural, undistorted human eye perspective matching true architectural scale
       window.innerWidth / window.innerHeight,
       0.1,
       400
@@ -258,6 +289,7 @@ class App {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   }
 
   animate() {
@@ -271,6 +303,15 @@ class App {
     }
 
     this.lighting.update(this.camera);
+
+    // Update smooth interactive animations (doors, drawers, flame, water)
+    if (this.houseResult && this.houseResult.kitchenGroup && this.houseResult.kitchenGroup.userData.interactiveList) {
+      const list = this.houseResult.kitchenGroup.userData.interactiveList;
+      for (let i = 0; i < list.length; i++) {
+        if (list[i].update) list[i].update(delta);
+      }
+    }
+
     this.updateHoverInspection();
     this.ui.update();
 
@@ -297,18 +338,41 @@ class App {
     }
 
     const intersects = this.raycaster.intersectObjects(interactables, false);
-    if (intersects.length > 0 && intersects[0].distance < 14.0) {
+    let foundInteractable = false;
+
+    if (intersects.length > 0) {
       const hit = intersects[0].object;
-      if (hit && hit.userData && hit.userData.dimInfo) {
+      const dist = intersects[0].distance;
+
+      // 1. Check interactive furniture within reachable range (<= 3.2m)
+      if (hit && hit.userData && hit.userData.interactiveController && dist <= 3.2) {
+        foundInteractable = true;
+        this.targetedInteractable = hit.userData.interactiveController;
+        if (this.ui) {
+          this.ui.showInteractionPrompt(this.targetedInteractable.getPromptText());
+        }
+      }
+
+      // 2. Check CAD dimension info
+      if (hit && hit.userData && hit.userData.dimInfo && dist < 14.0) {
         this.hoveredItem = hit;
         this.show3DDimension(hit.userData.dimInfo);
-        return;
+      } else if (this.hoveredItem) {
+        this.clear3DDimension();
+        this.hoveredItem = null;
+      }
+    } else {
+      if (this.hoveredItem) {
+        this.clear3DDimension();
+        this.hoveredItem = null;
       }
     }
 
-    if (this.hoveredItem) {
-      this.clear3DDimension();
-      this.hoveredItem = null;
+    if (!foundInteractable && this.targetedInteractable) {
+      this.targetedInteractable = null;
+      if (this.ui) {
+        this.ui.hideInteractionPrompt();
+      }
     }
   }
 

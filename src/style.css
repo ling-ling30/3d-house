@@ -58,64 +58,117 @@ canvas {
   box-shadow: 0 0 8px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(0, 0, 0, 0.4);
 }
 
-/* Header & Live Room Badge */
+/* Interactive Object Action Prompt */
+#interaction-prompt {
+  position: absolute;
+  bottom: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 30;
+  background: rgba(13, 17, 23, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  border-radius: 30px;
+  padding: 8px 18px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.25);
+  pointer-events: auto;
+  cursor: pointer;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#interaction-prompt.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 12px);
+}
+
+#interaction-prompt:hover {
+  background: rgba(22, 27, 34, 0.98);
+  border-color: rgba(56, 189, 248, 0.8);
+  transform: translate(-50%, -2px);
+}
+
+.interact-key-badge {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: #0b0f17;
+  background: var(--accent-cyan);
+  padding: 3px 8px;
+  border-radius: 6px;
+  letter-spacing: 0.05em;
+  box-shadow: 0 2px 8px rgba(56, 189, 248, 0.4);
+}
+
+#interaction-label {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.01em;
+}
+
+/* Minimal Top-Left Header: Simple Room Badge & Menu Toggle */
 #hud-header {
   position: absolute;
-  top: 24px;
-  left: 24px;
-  z-index: 15;
+  top: 20px;
+  left: 20px;
+  z-index: 25;
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
   pointer-events: auto;
 }
 
-.brand {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.brand-badge {
-  display: inline-block;
-  align-self: flex-start;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  padding: 3px 8px;
-  border-radius: 4px;
-  background: rgba(56, 189, 248, 0.15);
-  color: var(--accent-cyan);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-#project-title {
-  font-size: 20px;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: #ffffff;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.7);
-}
-
-#room-card {
-  background: var(--bg-hud);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
+.simple-room-badge {
+  background: rgba(13, 17, 23, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
   border: 1px solid var(--border-subtle);
-  border-radius: 12px;
-  padding: 10px 16px;
+  border-radius: 9999px;
+  padding: 8px 16px;
   box-shadow: var(--shadow-elevation);
   display: flex;
-  flex-direction: column;
-  gap: 4px;
-  transition: border-color 0.2s ease;
+  align-items: center;
+  gap: 9px;
+  pointer-events: auto;
 }
 
-.room-indicator {
+.menu-toggle-btn {
+  background: rgba(13, 17, 23, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9999px;
+  padding: 8px 16px;
+  color: #e2e8f0;
+  font-family: var(--font-main);
+  font-size: 13px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+  box-shadow: var(--shadow-elevation);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto;
+}
+
+.menu-toggle-btn:hover {
+  background: rgba(22, 27, 34, 0.95);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: var(--accent-cyan);
+  transform: translateY(-1px);
+}
+
+.menu-toggle-btn.active {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: rgba(56, 189, 248, 0.55);
+  color: var(--accent-cyan);
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.25);
 }
 
 .live-dot {
@@ -151,55 +204,31 @@ canvas {
   opacity: 0.4;
 }
 
-/* Minimap radar */
-#minimap-wrapper {
-  position: absolute;
-  top: 24px;
-  right: 24px;
-  z-index: 15;
-  background: var(--bg-hud);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--border-subtle);
-  border-radius: 14px;
-  padding: 12px;
-  box-shadow: var(--shadow-elevation);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.minimap-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  letter-spacing: 0.08em;
-  color: var(--text-muted);
-}
-
-.minimap-hint {
-  font-size: 9px;
-  color: var(--accent-cyan);
-}
-
-#minimap-canvas {
-  border-radius: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  cursor: crosshair;
+/* Minimap Removed as requested */
+#minimap-wrapper,
+#minimap-canvas,
+.minimap-toggle-btn,
+.floating-map-btn {
+  display: none !important;
 }
 
 /* Quick room teleporter pills */
 #room-teleport-bar {
   position: absolute;
-  top: 130px;
-  left: 24px;
-  z-index: 15;
+  top: 68px;
+  left: 20px;
+  z-index: 24;
   display: flex;
   flex-wrap: wrap;
-  max-width: 320px;
+  max-width: 440px;
   gap: 6px;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#room-teleport-bar.menu-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-10px);
 }
 
 .room-pill {
@@ -235,7 +264,7 @@ canvas {
   bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
-  z-index: 15;
+  z-index: 24;
   background: var(--bg-hud);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
@@ -246,6 +275,13 @@ canvas {
   display: flex;
   align-items: center;
   gap: 10px;
+  transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1), transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#hud-toolbar.menu-hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 16px);
 }
 
 .toolbar-group {
@@ -702,41 +738,30 @@ canvas {
     -webkit-touch-callout: none;
   }
 
-  /* HUD Header */
+  /* Minimal HUD Header & Menu */
   #hud-header {
-    top: 10px;
-    left: 10px;
-    gap: 6px;
-    max-width: calc(100vw - 110px);
+    top: 12px;
+    left: 12px;
+    gap: 8px;
+    max-width: none;
   }
 
-  .brand-badge {
-    font-size: 8px;
-    padding: 2px 6px;
-  }
-
-  #project-title {
-    font-size: 14px;
-  }
-
-  #room-card {
-    padding: 6px 10px;
-    border-radius: 8px;
-    gap: 2px;
+  .simple-room-badge {
+    padding: 6px 12px;
   }
 
   #current-room-name {
     font-size: 12px;
   }
 
-  .room-meta {
-    font-size: 10px;
-    gap: 4px;
+  .menu-toggle-btn {
+    padding: 6px 12px;
+    font-size: 12px;
   }
 
   /* Quick Room Bar: Horizontal Swipe Carousel */
   #room-teleport-bar {
-    top: 86px;
+    top: 56px;
     left: 10px;
     right: 10px;
     max-width: none;

@@ -312,8 +312,8 @@ function generatePlan(carportOnLeft = true, stripGardenSideWall = false) {
   const playerSpawn = {
     x: carportOnLeft ? -0.80 : 0.80,
     y: 1.65,
-    z: 5.20,
-    rotY: Math.PI
+    z: 5.50,
+    rotY: 0.0 // 0.0 rad points along -Z, directly facing the front entrance and facade of the house
   };
 
   return {

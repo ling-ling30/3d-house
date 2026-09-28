@@ -2,8 +2,8 @@ export class UIManager {
   constructor(app) {
     this.app = app;
     this.dom = {};
+    this.menuVisible = false;
     this.initDOM();
-    this.initMinimap();
     this.bindEvents();
   }
 
@@ -13,35 +13,27 @@ export class UIManager {
       <!-- Crosshair for Walk Mode -->
       <div id="crosshair"></div>
 
-      <!-- Header & Room Badge -->
-      <header id="hud-header">
-        <div class="brand">
-          <span class="brand-badge">3D ARCHITECT</span>
-          <h1 id="project-title">Modern Villa (5.00m × 14.50m)</h1>
-        </div>
-        <div id="room-card">
-          <div class="room-indicator">
-            <span class="live-dot"></span>
-            <span id="current-room-name">Dollhouse 3D Overview</span>
-          </div>
-          <div class="room-meta">
-            <span id="room-area">5.00m × 14.50m Lot</span>
-            <span class="meta-divider">•</span>
-            <span id="coords-text">X: 0.0m | Z: 0.0m</span>
-          </div>
-        </div>
-      </header>
-
-      <!-- Minimap Container -->
-      <div id="minimap-wrapper">
-        <div class="minimap-header">
-          <span>FLOOR PLAN</span>
-          <span class="minimap-hint">Click to jump</span>
-          <button id="btn-toggle-minimap" class="minimap-toggle-btn" title="Toggle Minimap">✕</button>
-        </div>
-        <canvas id="minimap-canvas" width="160" height="300"></canvas>
+      <!-- Interactive Object Action Prompt -->
+      <div id="interaction-prompt" class="interaction-pill hidden">
+        <span class="interact-key-badge">CLICK / F</span>
+        <span id="interaction-label">Open</span>
       </div>
-      <button id="btn-floating-map" class="floating-map-btn" style="display: none;" title="Open Floor Plan">🗺️ Plan</button>
+
+      <!-- Minimal Top-Left Header: Simple Room Badge + Menu Button -->
+      <header id="hud-header">
+        <div id="room-card" class="simple-room-badge">
+          <span class="live-dot"></span>
+          <span id="current-room-name">Living Room</span>
+        </div>
+        <button id="btn-toggle-menu" class="menu-toggle-btn" title="Toggle Controls & Rooms Menu">
+          <svg class="menu-icon-bars" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round">
+            <line x1="4" y1="7" x2="20" y2="7"></line>
+            <line x1="4" y1="12" x2="20" y2="12"></line>
+            <line x1="4" y1="17" x2="20" y2="17"></line>
+          </svg>
+          <span id="menu-btn-text">Menu</span>
+        </button>
+      </header>
 
       <!-- Click to Enter Walk Mode Overlay -->
       <div id="click-overlay" class="hidden">
@@ -65,8 +57,8 @@ export class UIManager {
         </div>
       </div>
 
-      <!-- Quick Room Drawer / Teleporter Bar -->
-      <div id="room-teleport-bar">
+      <!-- Quick Room Drawer / Teleporter Bar (Hidden by default) -->
+      <div id="room-teleport-bar" class="menu-hidden">
         <button class="room-pill active" data-room="carport">Carport (2.8×4.2m)</button>
         <button class="room-pill" data-room="front_garden">Front Garden (2.2×2m)</button>
         <button class="room-pill" data-room="bedroom_1">Bedroom 1 (Gaming Room)</button>
@@ -79,18 +71,16 @@ export class UIManager {
         <button class="room-pill" data-room="bedroom_2">Bedroom 2 (L-shape 4.3m)</button>
       </div>
 
-
-
-      <!-- Bottom Control Toolbar -->
-      <footer id="hud-toolbar">
+      <!-- Bottom Control Toolbar (Hidden by default) -->
+      <footer id="hud-toolbar" class="menu-hidden">
         <div class="toolbar-group">
-          <button id="btn-mode-free" class="tool-btn active" title="Free Camera Flight (Fly anywhere with WASD + Mouse / Mobile Swipe)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            <span>Free Fly</span>
-          </button>
-          <button id="btn-mode-walk" class="tool-btn" title="Walk Mode (Ground eye-level walkthrough with wall collisions)">
+          <button id="btn-mode-walk" class="tool-btn active" title="Walk Mode (Ground eye-level walkthrough with wall collisions)">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="2"/><path d="m9 20 3-6 3 6"/><path d="m6 10 6 3 6-3"/></svg>
             <span>Walk Mode</span>
+          </button>
+          <button id="btn-mode-free" class="tool-btn" title="Free Camera Flight (Fly anywhere with WASD + Mouse / Mobile Swipe)">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            <span>Free Fly</span>
           </button>
         </div>
 
@@ -135,7 +125,7 @@ export class UIManager {
           <span class="j-dir j-lf">◀</span>
           <span class="j-dir j-rt">▶</span>
         </div>
-        <div class="j-label">MOVE / FLY</div>
+        <div class="j-label">MOVE / WALK</div>
       </div>
 
       <!-- Quick Turn & Swipe-to-Look Controls -->
@@ -179,7 +169,7 @@ export class UIManager {
     this.dom.overlay = document.getElementById('click-overlay');
     this.dom.btnStartWalk = document.getElementById('btn-start-walk');
     this.dom.btnModeWalk = document.getElementById('btn-mode-walk');
-    this.dom.btnModeFree = document.getElementById('btn-mode-free') || document.getElementById('btn-mode-dollhouse');
+    this.dom.btnModeFree = document.getElementById('btn-mode-free');
     this.dom.btnToggleRoof = document.getElementById('btn-toggle-roof');
     this.dom.btnDay = document.getElementById('btn-preset-day');
     this.dom.btnSunset = document.getElementById('btn-preset-sunset');
@@ -192,28 +182,60 @@ export class UIManager {
     this.dom.btnApplyPlan = document.getElementById('btn-apply-plan');
     this.dom.btnResetPlan = document.getElementById('btn-reset-plan');
     this.dom.planJsonInput = document.getElementById('plan-json-input');
-    this.dom.minimapCanvas = document.getElementById('minimap-canvas');
     this.dom.roomPills = document.querySelectorAll('.room-pill');
+    this.dom.btnToggleMenu = document.getElementById('btn-toggle-menu');
+    this.dom.menuBtnText = document.getElementById('menu-btn-text');
+    this.dom.hudToolbar = document.getElementById('hud-toolbar');
+    this.dom.roomTeleportBar = document.getElementById('room-teleport-bar');
+    this.dom.interactionPrompt = document.getElementById('interaction-prompt');
+    this.dom.interactionLabel = document.getElementById('interaction-label');
   }
 
-  initMinimap() {
-    this.mmCtx = this.dom.minimapCanvas.getContext('2d');
-    // Map bounds: X: [-2.9, 2.9], Z: [-8.0, 8.0] (Exact 5m x 14.5m proportion)
-    this.mapBounds = { minX: -2.9, maxX: 2.9, minZ: -8.0, maxZ: 8.0 };
+  showInteractionPrompt(label, key = 'CLICK / F') {
+    if (this.dom.interactionLabel) this.dom.interactionLabel.innerText = label;
+    const badge = this.dom.interactionPrompt ? this.dom.interactionPrompt.querySelector('.interact-key-badge') : null;
+    if (badge) badge.innerText = key;
+    if (this.dom.interactionPrompt) this.dom.interactionPrompt.classList.remove('hidden');
+  }
+
+  hideInteractionPrompt() {
+    if (this.dom.interactionPrompt) this.dom.interactionPrompt.classList.add('hidden');
   }
 
   bindEvents() {
+    // Interaction prompt click
+    if (this.dom.interactionPrompt) {
+      this.dom.interactionPrompt.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (this.app.triggerInteraction) {
+          this.app.triggerInteraction();
+        }
+      });
+    }
+
+    // Menu toggle button
+    if (this.dom.btnToggleMenu) {
+      this.dom.btnToggleMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.toggleMenu();
+      });
+    }
+
     // Start Walk click
-    this.dom.btnStartWalk.addEventListener('click', () => {
-      this.app.setMode('walk');
-      this.app.fpsController.lock();
-    });
+    if (this.dom.btnStartWalk) {
+      this.dom.btnStartWalk.addEventListener('click', () => {
+        this.app.setMode('walk');
+        this.app.fpsController.lock();
+      });
+    }
 
     // Toolbar modes
-    this.dom.btnModeWalk.addEventListener('click', () => {
-      this.app.setMode('walk');
-      this.app.fpsController.lock();
-    });
+    if (this.dom.btnModeWalk) {
+      this.dom.btnModeWalk.addEventListener('click', () => {
+        this.app.setMode('walk');
+        this.app.fpsController.lock();
+      });
+    }
 
     if (this.dom.btnModeFree) {
       this.dom.btnModeFree.addEventListener('click', () => {
@@ -232,22 +254,26 @@ export class UIManager {
     }
 
     // Lighting
-    this.dom.btnDay.addEventListener('click', () => this.app.setLighting('day'));
-    this.dom.btnSunset.addEventListener('click', () => this.app.setLighting('sunset'));
-    this.dom.btnNight.addEventListener('click', () => this.app.setLighting('night'));
+    if (this.dom.btnDay) this.dom.btnDay.addEventListener('click', () => this.app.setLighting('day'));
+    if (this.dom.btnSunset) this.dom.btnSunset.addEventListener('click', () => this.app.setLighting('sunset'));
+    if (this.dom.btnNight) this.dom.btnNight.addEventListener('click', () => this.app.setLighting('night'));
 
     // Dimensions toggle
-    this.dom.btnDimensions.addEventListener('click', () => {
-      const active = this.app.toggleDimensions();
-      this.dom.btnDimensions.classList.toggle('active', active);
-    });
+    if (this.dom.btnDimensions) {
+      this.dom.btnDimensions.addEventListener('click', () => {
+        const active = this.app.toggleDimensions();
+        this.dom.btnDimensions.classList.toggle('active', active);
+      });
+    }
 
     // Sound toggle
-    this.dom.btnSound.addEventListener('click', () => {
-      const muted = this.app.toggleSound();
-      this.dom.btnSound.classList.toggle('active', !muted);
-      this.dom.btnSound.querySelector('span').innerText = muted ? '🔇 Muted' : '🔊 Sound';
-    });
+    if (this.dom.btnSound) {
+      this.dom.btnSound.addEventListener('click', () => {
+        const muted = this.app.toggleSound();
+        this.dom.btnSound.classList.toggle('active', !muted);
+        this.dom.btnSound.querySelector('span').innerText = muted ? '🔇 Muted' : '🔊 Sound';
+      });
+    }
 
     // Room quick teleport pills
     this.dom.roomPills.forEach(pill => {
@@ -257,15 +283,6 @@ export class UIManager {
         this.dom.roomPills.forEach(p => p.classList.remove('active'));
         pill.classList.add('active');
       });
-    });
-
-    // Minimap click-to-teleport
-    this.dom.minimapCanvas.addEventListener('click', (e) => {
-      const rect = this.dom.minimapCanvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
-      const worldPos = this.minimapToWorld(clickX, clickY);
-      this.app.teleportToCoords(worldPos.x, worldPos.z);
     });
 
     // Quick Turn buttons (45 degree snappy turn)
@@ -293,52 +310,57 @@ export class UIManager {
       });
     }
 
-    // Minimap toggle for clean mobile screen
-    const btnToggleMap = document.getElementById('btn-toggle-minimap');
-    const btnFloatMap = document.getElementById('btn-floating-map');
-    const mapWrap = document.getElementById('minimap-wrapper');
-
-    if (btnToggleMap && btnFloatMap && mapWrap) {
-      btnToggleMap.addEventListener('click', (e) => {
-        e.stopPropagation();
-        mapWrap.style.display = 'none';
-        btnFloatMap.style.display = 'flex';
-      });
-
-      btnFloatMap.addEventListener('click', (e) => {
-        e.stopPropagation();
-        mapWrap.style.display = 'flex';
-        btnFloatMap.style.display = 'none';
+    // Plan Editor Modal
+    if (this.dom.btnCustomPlan) {
+      this.dom.btnCustomPlan.addEventListener('click', () => {
+        this.dom.planJsonInput.value = JSON.stringify(this.app.currentHouseData, null, 2);
+        this.dom.planModal.classList.remove('hidden');
       });
     }
 
-    // Plan Editor Modal
-    this.dom.btnCustomPlan.addEventListener('click', () => {
-      this.dom.planJsonInput.value = JSON.stringify(this.app.currentHouseData, null, 2);
-      this.dom.planModal.classList.remove('hidden');
-    });
+    if (this.dom.btnCloseModal) {
+      this.dom.btnCloseModal.addEventListener('click', () => {
+        this.dom.planModal.classList.add('hidden');
+      });
+    }
 
-    this.dom.btnCloseModal.addEventListener('click', () => {
-      this.dom.planModal.classList.add('hidden');
-    });
-
-    this.dom.btnApplyPlan.addEventListener('click', () => {
-      try {
-        const parsed = JSON.parse(this.dom.planJsonInput.value);
-        const res = this.app.loadCustomHouse(parsed);
-        if (res.success) {
-          this.dom.planModal.classList.add('hidden');
-        } else {
-          alert('Error loading house: ' + res.error);
+    if (this.dom.btnApplyPlan) {
+      this.dom.btnApplyPlan.addEventListener('click', () => {
+        try {
+          const parsed = JSON.parse(this.dom.planJsonInput.value);
+          const res = this.app.loadCustomHouse(parsed);
+          if (res.success) {
+            this.dom.planModal.classList.add('hidden');
+          } else {
+            alert('Error loading house: ' + res.error);
+          }
+        } catch (e) {
+          alert('Invalid JSON: ' + e.message);
         }
-      } catch (e) {
-        alert('Invalid JSON: ' + e.message);
-      }
-    });
+      });
+    }
 
-    this.dom.btnResetPlan.addEventListener('click', () => {
-      this.dom.planJsonInput.value = JSON.stringify(this.app.currentHouseData, null, 2);
-    });
+    if (this.dom.btnResetPlan) {
+      this.dom.btnResetPlan.addEventListener('click', () => {
+        this.dom.planJsonInput.value = JSON.stringify(this.app.currentHouseData, null, 2);
+      });
+    }
+  }
+
+  toggleMenu(forceState) {
+    this.menuVisible = forceState !== undefined ? forceState : !this.menuVisible;
+    if (this.dom.hudToolbar) {
+      this.dom.hudToolbar.classList.toggle('menu-hidden', !this.menuVisible);
+    }
+    if (this.dom.roomTeleportBar) {
+      this.dom.roomTeleportBar.classList.toggle('menu-hidden', !this.menuVisible);
+    }
+    if (this.dom.btnToggleMenu) {
+      this.dom.btnToggleMenu.classList.toggle('active', this.menuVisible);
+    }
+    if (this.dom.menuBtnText) {
+      this.dom.menuBtnText.innerText = this.menuVisible ? 'Close' : 'Menu';
+    }
   }
 
   updateAfterPlanReload() {
@@ -353,32 +375,8 @@ export class UIManager {
     });
   }
 
-  worldToMinimap(wx, wz) {
-    const b = this.mapBounds;
-    const w = this.dom.minimapCanvas.width;
-    const h = this.dom.minimapCanvas.height;
-    const nx = (wx - b.minX) / (b.maxX - b.minX);
-    const nz = (wz - b.minZ) / (b.maxZ - b.minZ);
-    return {
-      x: nx * w,
-      y: (1 - nz) * h
-    };
-  }
-
-  minimapToWorld(mx, my) {
-    const b = this.mapBounds;
-    const w = this.dom.minimapCanvas.width;
-    const h = this.dom.minimapCanvas.height;
-    const nx = mx / w;
-    const ny = 1 - (my / h);
-    return {
-      x: b.minX + nx * (b.maxX - b.minX),
-      z: b.minZ + ny * (b.maxZ - b.minZ)
-    };
-  }
-
   update() {
-    let playerX = 0, playerZ = 0, headingAngle = 0;
+    let playerX = 0, playerZ = 0;
 
     if (this.app.mode === 'walk') {
       const pos = (this.app.fpsController && typeof this.app.fpsController.getPosition === 'function')
@@ -386,29 +384,25 @@ export class UIManager {
         : this.app.camera.position;
       playerX = pos.x;
       playerZ = pos.z;
-      headingAngle = (this.app.fpsController && typeof this.app.fpsController.getYaw === 'function')
-        ? this.app.fpsController.getYaw()
-        : this.app.camera.rotation.y;
 
       const currentRoom = this.app.fpsController.getCurrentRoom();
       if (currentRoom) {
-        this.dom.currentRoomName.innerText = currentRoom.name;
-        this.dom.roomArea.innerText = currentRoom.area;
+        if (this.dom.currentRoomName) this.dom.currentRoomName.innerText = currentRoom.name;
+        if (this.dom.roomArea) this.dom.roomArea.innerText = currentRoom.area;
 
         this.dom.roomPills.forEach(pill => {
           pill.classList.toggle('active', pill.getAttribute('data-room') === currentRoom.id);
         });
       }
 
-      this.dom.coordsText.innerText = `X: ${playerX.toFixed(1)}m | Z: ${playerZ.toFixed(1)}m`;
+      if (this.dom.coordsText) {
+        this.dom.coordsText.innerText = `X: ${playerX.toFixed(1)}m | Z: ${playerZ.toFixed(1)}m`;
+      }
     } else {
       // Free Flight mode
       const cam = this.app.camera.position;
       playerX = cam.x;
       playerZ = cam.z;
-      headingAngle = (this.app.freeCameraController && typeof this.app.freeCameraController.getYaw === 'function')
-        ? this.app.freeCameraController.getYaw()
-        : this.app.camera.rotation.y;
 
       let currentRoom = null;
       if (this.app.fpsController && typeof this.app.fpsController.getRoomAt === 'function') {
@@ -418,115 +412,20 @@ export class UIManager {
       }
 
       if (currentRoom && currentRoom.id !== 'outside') {
-        this.dom.currentRoomName.innerText = `Free Fly: ${currentRoom.name}`;
-        this.dom.roomArea.innerText = currentRoom.area || '';
+        if (this.dom.currentRoomName) this.dom.currentRoomName.innerText = `Free Fly: ${currentRoom.name}`;
+        if (this.dom.roomArea) this.dom.roomArea.innerText = currentRoom.area || '';
         this.dom.roomPills.forEach(pill => {
           pill.classList.toggle('active', pill.getAttribute('data-room') === currentRoom.id);
         });
       } else {
-        this.dom.currentRoomName.innerText = "Free Fly Camera";
-        this.dom.roomArea.innerText = "6-DOF Aerial Flight";
+        if (this.dom.currentRoomName) this.dom.currentRoomName.innerText = "Free Fly Camera";
+        if (this.dom.roomArea) this.dom.roomArea.innerText = "6-DOF Aerial Flight";
       }
 
-      this.dom.coordsText.innerText = `X: ${playerX.toFixed(1)}m | Y: ${cam.y.toFixed(1)}m | Z: ${playerZ.toFixed(1)}m`;
-    }
-
-    this.renderMinimap(playerX, playerZ, headingAngle);
-  }
-
-  renderMinimap(playerX, playerZ, headingAngle) {
-    const ctx = this.mmCtx;
-    const w = this.dom.minimapCanvas.width;
-    const h = this.dom.minimapCanvas.height;
-
-    ctx.clearRect(0, 0, w, h);
-
-    // Background
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, w, h);
-
-    // Subtle grid
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 1;
-    for (let gx = 0; gx < w; gx += 22) {
-      ctx.beginPath();
-      ctx.moveTo(gx, 0);
-      ctx.lineTo(gx, h);
-      ctx.stroke();
-    }
-    for (let gy = 0; gy < h; gy += 22) {
-      ctx.beginPath();
-      ctx.moveTo(0, gy);
-      ctx.lineTo(w, gy);
-      ctx.stroke();
-    }
-
-    // Draw rooms
-    const rooms = this.app.currentHouseData.rooms || [];
-    rooms.forEach(r => {
-      if (r.id === 'garden_strip' || r.id === 'front_garden') {
-        ctx.fillStyle = 'rgba(34, 197, 94, 0.25)';
-        ctx.strokeStyle = '#22c55e';
-      } else if (r.id === 'covered_area') {
-        ctx.fillStyle = 'rgba(251, 146, 60, 0.25)';
-        ctx.strokeStyle = '#fb923c';
-      } else if (r.id === 'carport') {
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.2)';
-        ctx.strokeStyle = '#94a3b8';
-      } else {
-        ctx.fillStyle = 'rgba(56, 189, 248, 0.15)';
-        ctx.strokeStyle = '#38bdf8';
+      if (this.dom.coordsText) {
+        this.dom.coordsText.innerText = `X: ${playerX.toFixed(1)}m | Y: ${cam.y.toFixed(1)}m | Z: ${playerZ.toFixed(1)}m`;
       }
-
-      ctx.lineWidth = 1.5;
-      const boxes = (r.subBounds && r.subBounds.length > 0) ? r.subBounds : [r.bounds];
-      boxes.forEach(b => {
-        const p1 = this.worldToMinimap(b.minX, b.maxZ);
-        const p2 = this.worldToMinimap(b.maxX, b.minZ);
-        const rw = p2.x - p1.x;
-        const rh = p2.y - p1.y;
-        ctx.fillRect(p1.x, p1.y, rw, rh);
-        ctx.strokeRect(p1.x, p1.y, rw, rh);
-      });
-
-      // Room short label (centered on primary bounding box)
-      const b = r.bounds;
-      const p1 = this.worldToMinimap(b.minX, b.maxZ);
-      const p2 = this.worldToMinimap(b.maxX, b.minZ);
-      const rw = p2.x - p1.x;
-      const rh = p2.y - p1.y;
-      ctx.fillStyle = '#cbd5e1';
-      ctx.font = 'bold 9px "Segoe UI", sans-serif';
-      ctx.textAlign = 'center';
-      const shortName = r.name.split(' ')[0];
-      ctx.fillText(shortName, p1.x + rw / 2, p1.y + rh / 2 + 3);
-    });
-
-    // Draw camera / player position on map in both Free Fly and Walk mode
-    const playerMapPos = this.worldToMinimap(playerX, playerZ);
-
-    // Vision cone
-    ctx.save();
-    ctx.translate(playerMapPos.x, playerMapPos.y);
-    const mapAngle = -headingAngle - Math.PI / 2;
-    ctx.rotate(mapAngle);
-
-    ctx.fillStyle = this.app.mode === 'free' ? 'rgba(56, 189, 248, 0.40)' : 'rgba(245, 158, 11, 0.40)';
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    ctx.arc(0, 0, 26, -Math.PI / 4, Math.PI / 4);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
-
-    // Position dot
-    ctx.fillStyle = this.app.mode === 'free' ? '#38bdf8' : '#f59e0b';
-    ctx.beginPath();
-    ctx.arc(playerMapPos.x, playerMapPos.y, 4.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    }
   }
 
   setModeUI(mode) {
@@ -536,15 +435,12 @@ export class UIManager {
     const crosshair = document.getElementById('crosshair');
     if (crosshair) crosshair.style.display = 'block';
 
-    // Touch joystick available for both Free Fly and Walk Mode
     const joystick = document.getElementById('virtual-joystick');
     if (joystick) joystick.style.display = 'flex';
 
-    // Touch look controls available for both Free Fly and Walk Mode
     const lookControls = document.getElementById('touch-look-controls');
     if (lookControls) lookControls.style.display = 'flex';
 
-    // Keep intrusive modal overlay hidden
     if (this.dom.overlay) {
       this.dom.overlay.classList.add('hidden');
     }
@@ -579,8 +475,8 @@ export class UIManager {
   }
 
   setLightingUI(preset) {
-    this.dom.btnDay.classList.toggle('active', preset === 'day');
-    this.dom.btnSunset.classList.toggle('active', preset === 'sunset');
-    this.dom.btnNight.classList.toggle('active', preset === 'night');
+    if (this.dom.btnDay) this.dom.btnDay.classList.toggle('active', preset === 'day');
+    if (this.dom.btnSunset) this.dom.btnSunset.classList.toggle('active', preset === 'sunset');
+    if (this.dom.btnNight) this.dom.btnNight.classList.toggle('active', preset === 'night');
   }
 }

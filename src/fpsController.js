@@ -155,7 +155,7 @@ export class FPSController {
 
     this.onCanvasClick = (e) => {
       if (!this.enabled) return;
-      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
+      if (e.target.closest('#hud-toolbar') || e.target.closest('#hud-header') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
       if (!this.isLocked) {
@@ -172,7 +172,7 @@ export class FPSController {
     // Mouse drag-to-look (left-click, middle-click, or right-click)
     this.onMouseDown = (e) => {
       if (!this.enabled) return;
-      if (e.target.closest('#hud-toolbar') || e.target.closest('#minimap-wrapper') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
+      if (e.target.closest('#hud-toolbar') || e.target.closest('#hud-header') || e.target.closest('#room-teleport-bar') || e.target.closest('.plan-dialog') || e.target.closest('.touch-ctrl')) {
         return;
       }
       this.isMouseDown = true;
@@ -253,7 +253,7 @@ export class FPSController {
         const touch = e.changedTouches[i];
         const target = touch.target;
 
-        if (target.closest('#hud-toolbar') || target.closest('#minimap-wrapper') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
+        if (target.closest('#hud-toolbar') || target.closest('#hud-header') || target.closest('#room-teleport-bar') || target.closest('.plan-dialog') || target.closest('.turn-chip') || target.closest('.btn-primary') || target.closest('.btn-secondary')) {
           continue;
         }
 

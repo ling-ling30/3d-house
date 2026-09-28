@@ -4,59 +4,36 @@ import {
   createZelligeTileNormalMap,
   createWhiteMarbleCounterTexture,
   createWarmOakTexture,
-  createBrushedFridgeTexture,
-  createRoughBeigeCeramicTexture,
-  createRoughBeigeCeramicNormalMap
+  createBrushedFridgeTexture
 } from './textures.js';
+import { audio } from './audio.js';
 
 /**
- * Architectural Kitchen Suite Builder
- * Swapped Configuration matching user's custom layout:
- *
- * 1. SHORT WALL (Z = -1.15m: X in [0.30, 2.50], Width = 2.20m) -> COOKING / STOVE ZONE:
- *    - Left base storage drawers (450mm)
- *    - Cooking Station (900mm) centered at X = 1.20m:
- *      * Modena 2-Burner Gas Hob (730 x 420 x 100 mm | Cut-Out 660 x 360 mm) on marble counter
- *      * Built-in Black Glass Electric Oven (600mm) centered directly under the gas hob
- *      * Slim Integrated Range Hood (780mm) with brushed stainless accent strip flush under upper cabinets
- *    - Right marble counter prep landing (250mm)
- *    - Inside corner junction (600mm) with Matte Black Electric Kettle
- *    - Full-width Glazed Beige Zellige Tile Backsplash with under-cabinet warm 3000K LED wash
- *
- * 2. LONG WALL (X = 2.50m: Z in [-1.15, 2.05], Length = 3.20m) -> SINK & FRIDGE ZONE:
- *    - Inside corner junction (600mm)
- *    - Food Prep & Storage Zone (800mm) with deep pot drawers and Chef's Angled Knife Block
- *    - Washing Station (1000mm) centered at Z = 0.75m:
- *      * Confirmed Workstation Sink (800 x 500 x 254 mm) in matte black composite
- *      * Workstation sliding natural oak cutting board (280 x 480 x 22 mm)
- *      * Stainless basket strainer drain with removable stopper pin
- *      * Wire dish colander basket with drying plates
- *      * Tall matte black gooseneck arch faucet with single-lever mixer
- *      * P-trap drainage pipe assembly inside base cabinet
- *      * Warranty card & installation guide booklet
- *      * Above Sink: Open Warm Honey Oak Shelving Unit (850mm) with microwave niche, jars, mugs, and plate rack
- *      * Under-shelf: Warm LED strip wash + horizontal hanging rail with S-hooks holding 4 coffee mugs
- *    - End-Cap Tall Refrigerator Enclosure (700mm, Z in [1.35, 2.05], Y up to 2.35m):
- *      * Single-Door Refrigerator (1 Door, no horizontal split!)
- *      * High-Clarity Brushed Stainless Steel / Titanium Texture (1024x1024) with visible directional grain & specular sheen
- *      * Full-length vertical stainless handle bar on opening edge
- *      * Eye-level black glass digital LED display panel (3 °C • ECO)
- *      * Brand badge & overhead top cabinet
+ * Architectural Interactive Kitchen Suite Builder
+ * Fixed & Calibrated:
+ * 1. Seamless L-junction corner base cabinet & continuous marble countertop (no holes, no broken seams).
+ * 2. Refrigerator door hinged on the rear/wall side (Z = 2.01m), handle at front (Z = 1.33m),
+ *    swinging open 95° towards the wall so the entire illuminated interior faces the kitchen workspace!
+ * 3. High-poly Japanese digital induction rice cooker with curved squircle body, domed lid,
+ *    champagne gold accent band, steam vent, and slanted digital LCD screen.
+ * 4. Interactive appliances: Fridge, Stove Burner, Sink Faucet & Water, Under-Sink Cabinet,
+ *    Cookware Drawer, and 20L Microwave.
  */
 export function buildKitchenSuite(scene, colliders, houseData) {
   const isCarportLeft = houseData.carportOnLeft !== false;
   const kitchenGroup = new THREE.Group();
   kitchenGroup.name = "kitchenSuite";
   kitchenGroup.userData.interactables = [];
+  kitchenGroup.userData.interactiveList = [];
 
-  // 1. High-Resolution Procedural Textures with Anisotropic Filtering
+  // Procedural Textures
   const beigeTileTex = createGlazedBeigeTileTexture();
   const zelligeNormalTex = createZelligeTileNormalMap();
   const marbleTex = createWhiteMarbleCounterTexture();
   const oakTex = createWarmOakTexture();
   const fridgeTex = createBrushedFridgeTexture();
 
-  // 2. Coherent Physically Based PBR Materials
+  // PBR Materials
   const matteBlackMat = new THREE.MeshStandardMaterial({
     color: 0x1d1f22,
     roughness: 0.44,
@@ -73,52 +50,109 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     roughness: 0.65
   });
 
-  const marbleMat = new THREE.MeshStandardMaterial({
-    map: marbleTex,
-    roughness: 0.14,
-    metalness: 0.03
+  const sinkMatteMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1e21,
+    roughness: 0.68,
+    metalness: 0.12
   });
 
-  // Helper to generate exact 10cm x 10cm natural beige ceramic tile material (directly matching user reference media_1790531162667.png)
-  const texLoader = new THREE.TextureLoader();
+  const faucetMat = new THREE.MeshStandardMaterial({
+    color: 0x181a1c,
+    roughness: 0.28,
+    metalness: 0.88
+  });
 
-  function create10cmBeigeCeramicMat(wMeters, hMeters) {
-    // 8 tiles per 0.80m = exactly 10cm (0.10m) per square tile in world space
-    const repX = wMeters / 0.80;
-    const repY = hMeters / 0.80;
+  const castIronMat = new THREE.MeshStandardMaterial({
+    color: 0x161719,
+    roughness: 0.80,
+    metalness: 0.25
+  });
 
-    const col = texLoader.load('/textures/beige_ceramic_tiles.png', (tex) => {
-      tex.colorSpace = THREE.SRGBColorSpace;
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repX, repY);
-      tex.anisotropy = 8;
-      tex.needsUpdate = true;
-    });
-    col.colorSpace = THREE.SRGBColorSpace;
-    col.wrapS = THREE.RepeatWrapping;
-    col.wrapT = THREE.RepeatWrapping;
-    col.repeat.set(repX, repY);
+  const stainlessMat = new THREE.MeshStandardMaterial({
+    color: 0xd8dce0,
+    roughness: 0.22,
+    metalness: 0.92
+  });
 
-    const nrm = texLoader.load('/textures/beige_ceramic_tiles_normal.png', (tex) => {
-      tex.wrapS = THREE.RepeatWrapping;
-      tex.wrapT = THREE.RepeatWrapping;
-      tex.repeat.set(repX, repY);
-      tex.anisotropy = 8;
-      tex.needsUpdate = true;
-    });
-    nrm.wrapS = THREE.RepeatWrapping;
-    nrm.wrapT = THREE.RepeatWrapping;
-    nrm.repeat.set(repX, repY);
+  const chromeMat = new THREE.MeshStandardMaterial({
+    color: 0xf1f5f9,
+    roughness: 0.08,
+    metalness: 0.98
+  });
 
-    return new THREE.MeshStandardMaterial({
-      map: col,
-      normalMap: nrm,
-      normalScale: new THREE.Vector2(0.85, 0.85),
-      roughness: 0.55,
-      metalness: 0.02
-    });
-  }
+  const brassBurnerMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.30,
+    metalness: 0.85
+  });
+
+  const flundraMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    roughness: 0.35,
+    metalness: 0.02
+  });
+
+  const smokedGlassMat = new THREE.MeshPhysicalMaterial({
+    color: 0x181c20,
+    transmission: 0.88,
+    opacity: 0.92,
+    transparent: true,
+    roughness: 0.05,
+    ior: 1.52,
+    metalness: 0.1
+  });
+
+  const clearGlassMat = new THREE.MeshPhysicalMaterial({
+    color: 0xffffff,
+    transmission: 0.95,
+    opacity: 0.35,
+    transparent: true,
+    roughness: 0.04,
+    ior: 1.52
+  });
+
+  const waterMat = new THREE.MeshPhysicalMaterial({
+    color: 0x93c5fd,
+    transmission: 0.92,
+    opacity: 0.80,
+    transparent: true,
+    roughness: 0.02,
+    ior: 1.333,
+    depthWrite: false
+  });
+
+  const blueFlameMat = new THREE.MeshStandardMaterial({
+    color: 0x0088ff,
+    emissive: 0x00d4ff,
+    emissiveIntensity: 3.5,
+    transparent: true,
+    opacity: 0.92,
+    roughness: 0.1
+  });
+
+  const innerFlameMat = new THREE.MeshBasicMaterial({
+    color: 0xffffff,
+    transparent: true,
+    opacity: 0.95
+  });
+
+  const fridgeInteriorMat = new THREE.MeshStandardMaterial({
+    color: 0xf8fafc,
+    roughness: 0.15,
+    metalness: 0.02
+  });
+
+  const gasHobGlassMat = new THREE.MeshStandardMaterial({
+    color: 0x0a0c0e,
+    roughness: 0.08,
+    metalness: 0.15
+  });
+
+  const marbleMat = new THREE.MeshStandardMaterial({
+    map: marbleTex,
+    roughness: 0.18,
+    metalness: 0.04
+  });
 
   const oakMat = new THREE.MeshStandardMaterial({
     map: oakTex,
@@ -126,997 +160,1067 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     metalness: 0.02
   });
 
-  const faucetMat = new THREE.MeshStandardMaterial({
-    color: 0x222427,
-    roughness: 0.28,
-    metalness: 0.82
-  });
-
-  const sinkMatteMat = new THREE.MeshStandardMaterial({
-    color: 0x1a1c1e,
-    roughness: 0.50,
-    metalness: 0.15
-  });
-
-  const stainlessMat = new THREE.MeshStandardMaterial({
-    color: 0xd6d9dc,
-    roughness: 0.24,
-    metalness: 0.90
-  });
-
-  const gasHobGlassMat = new THREE.MeshStandardMaterial({
-    color: 0x111215,
-    roughness: 0.04,
-    metalness: 0.12
-  });
-
-  const castIronMat = new THREE.MeshStandardMaterial({
-    color: 0x222325,
-    roughness: 0.65,
-    metalness: 0.35
-  });
-
-  // High-Clarity Brushed Stainless Steel / Titanium Refrigerator Material (Distinct from matte black)
   const brushedFridgeMat = new THREE.MeshStandardMaterial({
     map: fridgeTex,
-    roughness: 0.26,
-    metalness: 0.88
-  });
-
-  const smokedGlassMat = new THREE.MeshPhysicalMaterial({
-    color: 0x111215,
-    roughness: 0.08,
-    metalness: 0.15,
-    transmission: 0.72,
-    transparent: true,
-    opacity: 0.88
-  });
-
-  const ceramicWhiteMat = new THREE.MeshStandardMaterial({
-    color: 0xf5f3ee,
-    roughness: 0.26,
-    metalness: 0.02
-  });
-
-  const clearGlassJarMat = new THREE.MeshPhysicalMaterial({
-    color: 0xffffff,
-    roughness: 0.06,
-    metalness: 0.05,
-    transmission: 0.90,
-    transparent: true,
-    opacity: 0.65
-  });
-
-  const corkMat = new THREE.MeshStandardMaterial({
-    color: 0xc49d68,
-    roughness: 0.75,
-    metalness: 0.02
+    roughness: 0.32,
+    metalness: 0.80
   });
 
   const ledEmissiveMat = new THREE.MeshBasicMaterial({
-    color: 0xffdfa8
+    color: 0xfffae0
   });
 
-  // Coordinate mirror transformer
+  const plantLeafMat = new THREE.MeshStandardMaterial({
+    color: 0x2e6b38,
+    roughness: 0.45,
+    metalness: 0.05
+  });
+
+  function create10cmBeigeCeramicMat(wMeters, hMeters) {
+    const repX = wMeters / 0.80;
+    const repY = hMeters / 0.80;
+    const bTex = beigeTileTex.clone();
+    bTex.repeat.set(repX, repY);
+    bTex.wrapS = THREE.RepeatWrapping;
+    bTex.wrapT = THREE.RepeatWrapping;
+    bTex.needsUpdate = true;
+
+    const nTex = zelligeNormalTex.clone();
+    nTex.repeat.set(repX, repY);
+    nTex.wrapS = THREE.RepeatWrapping;
+    nTex.wrapT = THREE.RepeatWrapping;
+    nTex.needsUpdate = true;
+
+    return new THREE.MeshStandardMaterial({
+      map: bTex,
+      normalMap: nTex,
+      normalScale: new THREE.Vector2(0.55, 0.55),
+      roughness: 0.35,
+      metalness: 0.04
+    });
+  }
+
+  // Dimension Constants
+  const counterBaseY = 0.86;
+  const slabThick = 0.04;
+  const counterTopY = counterBaseY + slabThick; // 0.90m
+  const plinthHeight = 0.10;
+  const cabHeight = counterBaseY - plinthHeight; // 0.76m
+  const counterDepth = 0.60;
+  const facingWallZ = -1.15;
+  const longWallX = 2.50;
+
+  const upperBottomY = 1.50;
+  const upperHeight = 0.85;
+  const upperMidY = upperBottomY + upperHeight / 2; // 1.925m
+  const upperDepth = 0.35;
+  const tallCabinetH = 2.35;
+  const backsplashH = upperBottomY - counterTopY; // 0.60m
+  const backsplashMidY = counterTopY + backsplashH / 2; // 1.20m
+
   function mx(x) {
     return isCarportLeft ? x : -x;
+  }
+
+  function registerItem(mesh, dimInfo) {
+    if (dimInfo) mesh.userData.dimInfo = dimInfo;
+    kitchenGroup.userData.interactables.push(mesh);
+  }
+
+  function registerInteractable(mesh, controller) {
+    mesh.userData.interactive = true;
+    mesh.userData.interactiveController = controller;
+    if (!kitchenGroup.userData.interactables.includes(mesh)) {
+      kitchenGroup.userData.interactables.push(mesh);
+    }
+    if (!kitchenGroup.userData.interactiveList.includes(controller)) {
+      kitchenGroup.userData.interactiveList.push(controller);
+    }
   }
 
   function addBox(w, h, d, mat, x, y, z, rotY = 0, dimInfo = null) {
     const geo = new THREE.BoxGeometry(w, h, d);
     const mesh = new THREE.Mesh(geo, mat);
     mesh.position.set(mx(x), y, z);
-    mesh.rotation.y = isCarportLeft ? rotY : -rotY;
+    if (rotY !== 0) mesh.rotation.y = rotY;
     mesh.castShadow = true;
     mesh.receiveShadow = true;
-
-    if (dimInfo) {
-      mesh.userData.dimInfo = {
-        ...dimInfo,
-        p1: [mx(dimInfo.p1[0]), dimInfo.p1[1], dimInfo.p1[2]],
-        p2: [mx(dimInfo.p2[0]), dimInfo.p2[1], dimInfo.p2[2]]
-      };
-      kitchenGroup.userData.interactables.push(mesh);
-    }
-
     kitchenGroup.add(mesh);
+    if (dimInfo) registerItem(mesh, dimInfo);
     return mesh;
   }
 
-  function registerItem(mesh, dimInfo) {
-    if (mesh && dimInfo) {
-      mesh.userData.dimInfo = {
-        ...dimInfo,
-        p1: [mx(dimInfo.p1[0]), dimInfo.p1[1], dimInfo.p1[2]],
-        p2: [mx(dimInfo.p2[0]), dimInfo.p2[1], dimInfo.p2[2]]
-      };
-      kitchenGroup.userData.interactables.push(mesh);
-    }
-    return mesh;
-  }
-
-  // Global architectural measurements
-  const facingWallZ = -1.15;
-  const longWallX = 2.50;
-  // Exact visible interior room faces of the architectural walls:
-  // Rear short wall center Z = -1.15m (thickness 0.12m) -> inner room surface is at Z = -1.09m
-  const rearWallInnerZ = facingWallZ + 0.06; // -1.09m
-  // Long side wall center X = 2.50m (thickness 0.15m) -> inner room surface is at X = 2.425m
-  const sideWallInnerX = longWallX - 0.075; // 2.425m
-  const counterDepth = 0.60;
-  const counterTopY = 0.90;
-  const slabThick = 0.035;
-  const counterBaseY = counterTopY - slabThick; // 0.865m
-  const plinthHeight = 0.10;
-  const cabHeight = counterBaseY - plinthHeight; // 0.765m
-  const upperDepth = 0.36;
-  const upperHeight = 0.80;
-  const upperBottomY = 1.55;
-  const upperMidY = upperBottomY + upperHeight / 2; // 1.95m
-  const tallCabinetH = 2.35; // Top alignment for tall fridge housing & upper units
-  const backsplashH = upperBottomY - counterTopY; // 0.65m
-  const backsplashMidY = counterTopY + backsplashH / 2; // 1.225m
-
   // =========================================================================
-  // 1. SHORT WALL (Z = -1.15m: X in [0.30, 2.50], Total Width = 2.20m)
-  // NOW: COOKING & STOVE ZONE (Left Drawers -> Modena Hob & Oven -> Corner)
+  // 1. SHORT WALL: WET & CLEANING ZONE (Z = -1.15m: X in [0.30, 1.90])
   // =========================================================================
-  const sCenterZ = facingWallZ + counterDepth / 2;
-  const sPlinthZ = facingWallZ + (counterDepth - 0.05) / 2 + 0.01;
+  const sCenterZ = facingWallZ + counterDepth / 2; // -0.85m
+  const sPlinthZ = facingWallZ + (counterDepth - 0.06) / 2; // -0.88m
 
-  // --- 1A. LEFT STORAGE DRAWERS ON SHORT WALL (450mm: X in [0.30, 0.75]) ---
-  const leftDrawW = 0.45;
-  const leftDrawCenterX = 0.30 + leftDrawW / 2; // 0.525m
+  // 1A. Left Base Utility Drawer (300mm: X in [0.30, 0.60])
+  const leftDrawW = 0.30;
+  const leftDrawCenterX = 0.30 + leftDrawW / 2; // 0.45m
   addBox(leftDrawW, plinthHeight, counterDepth - 0.06, plinthMat, leftDrawCenterX, plinthHeight / 2, sPlinthZ);
   addBox(leftDrawW, cabHeight, counterDepth - 0.02, matteBlackMat, leftDrawCenterX, plinthHeight + cabHeight / 2, sCenterZ);
   addBox(leftDrawW, 0.035, 0.025, recessedGrooveMat, leftDrawCenterX, counterBaseY - 0.02, facingWallZ + counterDepth);
   addBox(leftDrawW, slabThick, counterDepth, marbleMat, leftDrawCenterX, counterTopY - slabThick / 2, sCenterZ);
-  // Drawer divisions (3 utility / spice drawers)
-  const sdY1 = plinthHeight + cabHeight * 0.33;
-  const sdY2 = plinthHeight + cabHeight * 0.66;
-  addBox(leftDrawW - 0.02, 0.006, 0.005, recessedGrooveMat, leftDrawCenterX, sdY1, facingWallZ + counterDepth + 0.002);
-  addBox(leftDrawW - 0.02, 0.006, 0.005, recessedGrooveMat, leftDrawCenterX, sdY2, facingWallZ + counterDepth + 0.002);
 
-
-  // --- 1B. COOKING STATION: MODENA 2-BURNER GAS HOB & BUILT-IN OVEN (900mm: X in [0.75, 1.65]) ---
-  const stoveSecW = 0.90;
-  const stoveCenterX = 1.20; // Centered at X = 1.20m on the short wall!
-  const hobLen = 0.73; // 730 mm Modena hob length
-  const hobWidth = 0.42; // 420 mm Modena hob width
-  const hobCenterZ = facingWallZ + counterDepth / 2; // Centered in 600mm counter with 90mm margins
-
-  const stoveDim = {
-    label: "730 × 420 mm",
-    p1: [stoveCenterX - hobLen / 2, 0.93, facingWallZ + counterDepth + 0.02],
-    p2: [stoveCenterX + hobLen / 2, 0.93, facingWallZ + counterDepth + 0.02],
-    axis: 'x'
-  };
-
-  // Base cabinet carcass under stove
-  addBox(stoveSecW, plinthHeight, counterDepth - 0.06, plinthMat, stoveCenterX, plinthHeight / 2, sPlinthZ);
-  addBox(stoveSecW, cabHeight, counterDepth - 0.02, matteBlackMat, stoveCenterX, plinthHeight + cabHeight / 2, sCenterZ);
-  addBox(stoveSecW, 0.035, 0.025, recessedGrooveMat, stoveCenterX, counterBaseY - 0.02, facingWallZ + counterDepth);
-  addBox(stoveSecW, slabThick, counterDepth, marbleMat, stoveCenterX, counterTopY - slabThick / 2, sCenterZ, 0, stoveDim);
-
-  // 1. Built-in Black Glass Electric Oven centered under the hob (W = 600mm, H = 580mm)
-  const ovenW = 0.60;
-  const ovenH = 0.58;
-  const ovenD = 0.54;
-  const ovenY = plinthHeight + 0.08 + ovenH / 2;
-  addBox(ovenW, ovenH, ovenD, matteBlackMat, stoveCenterX, ovenY, facingWallZ + 0.04 + ovenD / 2, 0, stoveDim);
-  // Smoked glass door
-  addBox(ovenW - 0.08, ovenH - 0.12, 0.015, smokedGlassMat, stoveCenterX, ovenY - 0.03, facingWallZ + counterDepth + 0.005, 0, stoveDim);
-  // Interior oven cavity wire rack visible through glass
-  addBox(ovenW - 0.16, 0.01, 0.01, stainlessMat, stoveCenterX, ovenY, facingWallZ + counterDepth - 0.12);
-  addBox(ovenW - 0.16, 0.01, 0.01, stainlessMat, stoveCenterX, ovenY - 0.12, facingWallZ + counterDepth - 0.12);
-  // Full-width brushed stainless oven handle bar
-  addBox(ovenW - 0.12, 0.022, 0.02, stainlessMat, stoveCenterX, ovenY + 0.18, facingWallZ + counterDepth + 0.032, 0, stoveDim);
-  addBox(0.02, 0.016, 0.028, stainlessMat, stoveCenterX - 0.20, ovenY + 0.18, facingWallZ + counterDepth + 0.015);
-  addBox(0.02, 0.016, 0.028, stainlessMat, stoveCenterX + 0.20, ovenY + 0.18, facingWallZ + counterDepth + 0.015);
-  // Top control panel with dual knobs & digital clock display
-  addBox(ovenW - 0.04, 0.09, 0.015, matteBlackMat, stoveCenterX, ovenY + 0.24, facingWallZ + counterDepth + 0.005);
-  addBox(0.06, 0.024, 0.006, new THREE.MeshBasicMaterial({ color: 0x00ffcc }), stoveCenterX, ovenY + 0.24, facingWallZ + counterDepth + 0.014);
-  [-0.18, 0.18].forEach(ox => {
-    const oKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.014, 16), matteBlackMat);
-    oKnob.position.set(mx(stoveCenterX + ox), ovenY + 0.24, facingWallZ + counterDepth + 0.015);
-    kitchenGroup.add(oKnob);
-  });
-
-  // 2. Modena 2-Burner Gas Hob on Marble Counter (730mm L x 420mm W x 100mm H)
-  // Tempered black glass base plate with beveled edge
-  addBox(hobLen, 0.008, hobWidth, gasHobGlassMat, stoveCenterX, counterTopY + 0.004, hobCenterZ, 0, stoveDim);
-
-  // Modena silver brand badge on front center rim of glass plate
-  const modenaBadge = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.002, 0.012), stainlessMat);
-  modenaBadge.position.set(mx(stoveCenterX), counterTopY + 0.009, hobCenterZ + hobWidth / 2 - 0.015);
-  kitchenGroup.add(modenaBadge);
-
-  // Dual Aluminum Burners with Semi Cast-Iron Grids & Gas Safety Technology
-  [-0.19, 0.19].forEach(bx => {
-    const burnerCenterX = stoveCenterX + bx;
-
-    // Aluminum burner cup body
-    const alumBody = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.062, 0.022, 24), stainlessMat);
-    alumBody.position.set(mx(burnerCenterX), counterTopY + 0.015, hobCenterZ);
-    kitchenGroup.add(alumBody);
-
-    // Brass flame distributor ring crown
-    const brassCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.008, 24), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.25 }));
-    brassCrown.position.set(mx(burnerCenterX), counterTopY + 0.026, hobCenterZ);
-    kitchenGroup.add(brassCrown);
-
-    // Black enamel burner cap
-    const bCap = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.008, 24), matteBlackMat);
-    bCap.position.set(mx(burnerCenterX), counterTopY + 0.032, hobCenterZ);
-    kitchenGroup.add(bCap);
-
-    // Gas safety thermocouple sensor pin
-    const thermoPin = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.022, 10), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.9 }));
-    thermoPin.position.set(mx(burnerCenterX - 0.02), counterTopY + 0.022, hobCenterZ + 0.048);
-    kitchenGroup.add(thermoPin);
-
-    // Electric spark ignition electrode pin
-    const igniterPin = new THREE.Mesh(new THREE.CylinderGeometry(0.003, 0.003, 0.020, 10), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.1 }));
-    igniterPin.position.set(mx(burnerCenterX + 0.02), counterTopY + 0.020, hobCenterZ + 0.048);
-    kitchenGroup.add(igniterPin);
-
-    // Semi Cast-Iron Heavy Pan Support Grid (210mm x 210mm x 35mm)
-    const gridSpan = 0.21;
-    const gridMat = castIronMat;
-    addBox(gridSpan, 0.016, 0.016, gridMat, burnerCenterX, counterTopY + 0.040, hobCenterZ - gridSpan / 2 + 0.008);
-    addBox(gridSpan, 0.016, 0.016, gridMat, burnerCenterX, counterTopY + 0.040, hobCenterZ + gridSpan / 2 - 0.008);
-    addBox(0.016, 0.016, gridSpan, gridMat, burnerCenterX - gridSpan / 2 + 0.008, counterTopY + 0.040, hobCenterZ);
-    addBox(0.016, 0.016, gridSpan, gridMat, burnerCenterX + gridSpan / 2 - 0.008, counterTopY + 0.040, hobCenterZ);
-    // Inward support fingers
-    addBox(gridSpan * 0.42, 0.020, 0.018, gridMat, burnerCenterX - 0.055, counterTopY + 0.048, hobCenterZ);
-    addBox(gridSpan * 0.42, 0.020, 0.018, gridMat, burnerCenterX + 0.055, counterTopY + 0.048, hobCenterZ);
-    addBox(0.018, 0.020, gridSpan * 0.42, gridMat, burnerCenterX, counterTopY + 0.048, hobCenterZ - 0.055);
-    addBox(0.018, 0.020, gridSpan * 0.42, gridMat, burnerCenterX, counterTopY + 0.048, hobCenterZ + 0.055);
-  });
-
-  // Knurled Modena Metallic Knob Controls (located front center between burners)
-  [-0.045, 0.045].forEach(kx => {
-    const kRing = new THREE.Mesh(new THREE.RingGeometry(0.018, 0.022, 16), new THREE.MeshStandardMaterial({ color: 0x444444, metalness: 0.7 }));
-    kRing.rotation.x = -Math.PI / 2;
-    kRing.position.set(mx(stoveCenterX + kx), counterTopY + 0.009, hobCenterZ + hobWidth / 2 - 0.045);
-    kitchenGroup.add(kRing);
-
-    const flameDot = new THREE.Mesh(new THREE.CircleGeometry(0.003, 12), new THREE.MeshBasicMaterial({ color: 0xff3322 }));
-    flameDot.rotation.x = -Math.PI / 2;
-    flameDot.position.set(mx(stoveCenterX + kx - 0.01), counterTopY + 0.010, hobCenterZ + hobWidth / 2 - 0.045 - 0.018);
-    kitchenGroup.add(flameDot);
-
-    const gKnob = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.016, 0.022, 20), stainlessMat);
-    gKnob.position.set(mx(stoveCenterX + kx), counterTopY + 0.018, hobCenterZ + hobWidth / 2 - 0.045);
-    kitchenGroup.add(gKnob);
-  });
-
-  // 3. Slim Built-in Telescopic Range Hood above Modena Hob (Y = 1.55m, Width = 780mm)
-  const hoodH = 0.055;
-  const hoodY = upperBottomY - hoodH / 2;
-  addBox(hobLen + 0.05, hoodH, upperDepth, matteBlackMat, stoveCenterX, hoodY, facingWallZ + upperDepth / 2, 0, stoveDim);
-  addBox(hobLen + 0.05, 0.018, 0.008, stainlessMat, stoveCenterX, hoodY, facingWallZ + upperDepth + 0.004);
-  addBox(hobLen - 0.02, 0.006, upperDepth - 0.06, stainlessMat, stoveCenterX, upperBottomY - hoodH + 0.003, facingWallZ + upperDepth / 2);
-
-
-  // --- 1C. RIGHT PREP COUNTER & CORNER BASE (X in [1.65, 2.50]) ---
-  const sRightW = 2.50 - 1.65; // 0.85m
-  const sRightCenterX = 1.65 + sRightW / 2;
-  addBox(sRightW, plinthHeight, counterDepth - 0.06, plinthMat, sRightCenterX, plinthHeight / 2, sPlinthZ);
-  addBox(sRightW, cabHeight, counterDepth - 0.02, matteBlackMat, sRightCenterX, plinthHeight + cabHeight / 2, sCenterZ);
-  addBox(sRightW, 0.035, 0.025, recessedGrooveMat, sRightCenterX, counterBaseY - 0.02, facingWallZ + counterDepth);
-  addBox(sRightW, slabThick, counterDepth, marbleMat, sRightCenterX, counterTopY - slabThick / 2, sCenterZ);
-
-  // Matte Black Electric Kettle resting in inside corner on Short Wall
-  const kettleX = 2.18;
-  const kettleZ = facingWallZ + 0.28;
-  const kettleBody = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.08, 0.22, 20), matteBlackMat);
-  kettleBody.position.set(mx(kettleX), counterTopY + 0.11, kettleZ);
-  kettleBody.castShadow = true;
-  kitchenGroup.add(kettleBody);
-
-  const kettleLid = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.025, 20), stainlessMat);
-  kettleLid.position.set(mx(kettleX), counterTopY + 0.22 + 0.012, kettleZ);
-  kitchenGroup.add(kettleLid);
-
-  const kettleHandle = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.16, 0.035), matteBlackMat);
-  kettleHandle.position.set(mx(kettleX + (isCarportLeft ? 0.085 : -0.085)), counterTopY + 0.12, kettleZ);
-  kitchenGroup.add(kettleHandle);
-
-
-  // --- 1D. BACKSPLASH & UPPER CABINETS ON SHORT WALL ---
-  const sBacksplashW = 2.15;
-  const sBacksplashCenterX = 0.30 + sBacksplashW / 2; // 1.375m
-  const sBacksplashMat = create10cmBeigeCeramicMat(sBacksplashW, backsplashH);
-  // Mount 10cm x 10cm handcrafted beige ceramic tiles directly on visible wall surface
-  addBox(sBacksplashW, backsplashH, 0.020, sBacksplashMat, sBacksplashCenterX, backsplashMidY, rearWallInnerZ + 0.010);
-  // Marble bottom curb strip (matching reference photo)
-  addBox(sBacksplashW, 0.04, 0.024, marbleMat, sBacksplashCenterX, counterTopY + 0.02, rearWallInnerZ + 0.012);
-
-  // Upper Cabinets across Short Wall (X in [0.30, 1.90], Length = 1.60m)
-  const sUpperW = 1.60;
-  const sUpperCenterX = 0.30 + sUpperW / 2; // 1.10m
-  addBox(sUpperW, upperHeight, upperDepth, matteBlackMat, sUpperCenterX, upperMidY, facingWallZ + upperDepth / 2);
-  addBox(sUpperW, 0.02, 0.02, recessedGrooveMat, sUpperCenterX, upperBottomY + 0.01, facingWallZ + upperDepth - 0.01);
-  // Door seams
-  [0.75, 1.20, 1.65].forEach(sx => {
-    addBox(0.004, upperHeight - 0.04, 0.005, recessedGrooveMat, sx, upperMidY, facingWallZ + upperDepth + 0.002);
-  });
-  // LED strip under short wall upper cabinets
-  addBox(sUpperW - 0.04, 0.008, 0.018, ledEmissiveMat, sUpperCenterX, upperBottomY - 0.004, facingWallZ + upperDepth / 2 + 0.08);
-  const ledLightShort = new THREE.PointLight(0xffdfa8, 1.1, 3.0, 1.3);
-  ledLightShort.position.set(mx(sUpperCenterX), upperBottomY - 0.06, facingWallZ + 0.22);
-  kitchenGroup.add(ledLightShort);
-
-
-  // =========================================================================
-  // 2. LONG WALL (X = 2.50m: Z in [-1.15, 2.05], Total Length = 3.20m)
-  // NOW: SINK & REFRIGERATOR ZONE (Prep -> Workstation Sink & Oak Shelves -> Fridge)
-  // =========================================================================
-  const baseMidX = longWallX - counterDepth / 2; // 2.20m
-  const plinthMidX = longWallX - (counterDepth - 0.05) / 2 - 0.01;
-  const longEdgeX = longWallX - counterDepth - 0.02;
-
-  // --- 2A. L-JUNCTION CORNER BASE (600mm: Z in [-1.15, -0.55]) ---
-  addBox(counterDepth, slabThick, counterDepth, marbleMat, baseMidX, counterTopY - slabThick / 2, facingWallZ + counterDepth / 2);
-  addBox(counterDepth - 0.02, cabHeight, counterDepth, matteBlackMat, baseMidX, plinthHeight + cabHeight / 2, facingWallZ + counterDepth / 2);
-  addBox(counterDepth - 0.06, plinthHeight, counterDepth, plinthMat, plinthMidX, plinthHeight / 2, facingWallZ + counterDepth / 2);
-
-
-  // --- 2B. PREP ZONE & BASE DRAWERS (800mm: Z in [-0.55, 0.25]) ---
-  const prepLen = 0.80;
-  const prepCenterZ = (-0.55 + 0.25) / 2; // -0.15m
-  addBox(counterDepth - 0.02, cabHeight, prepLen, matteBlackMat, baseMidX, plinthHeight + cabHeight / 2, prepCenterZ);
-  addBox(counterDepth - 0.06, plinthHeight, prepLen, plinthMat, plinthMidX, plinthHeight / 2, prepCenterZ);
-  addBox(0.025, 0.035, prepLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, prepCenterZ);
-  addBox(counterDepth, slabThick, prepLen, marbleMat, baseMidX, counterTopY - slabThick / 2, prepCenterZ);
-  // Drawer split grooves
-  const pMidY = plinthHeight + cabHeight / 2;
-  addBox(0.005, 0.006, prepLen - 0.02, recessedGrooveMat, longWallX - counterDepth - 0.002, pMidY, prepCenterZ);
-
-  // --- 2B1. DIGITAL INDUCTION RICE COOKER & RICE PADDLE UTENSIL (Z = -0.36m) ---
-  const rcW = 0.24; // 240 mm wide (Z-axis)
-  const rcD = 0.30; // 300 mm deep (X-axis)
-  const rcH = 0.20; // 200 mm high
-  const rcCenterZ = -0.36;
-  const rcCenterX = longWallX - 0.30; // X = 2.20m (centered in 600mm counter)
-  const rcBaseY = counterTopY;
-
-  const rcDim = {
-    label: "240 × 300 mm",
-    p1: [rcCenterX - rcD / 2, counterTopY + rcH, rcCenterZ],
-    p2: [rcCenterX + rcD / 2, counterTopY + rcH, rcCenterZ],
-    axis: 'x'
-  };
-
-  const rcBodyMat = new THREE.MeshStandardMaterial({
-    color: 0xf6f5f0,
-    roughness: 0.25,
-    metalness: 0.04
-  });
-  const rcTrimMat = new THREE.MeshStandardMaterial({
-    color: 0xc8a27a, // Rose-gold / champagne metallic trim ring
-    roughness: 0.30,
-    metalness: 0.85
-  });
-  const rcDisplayMat = new THREE.MeshStandardMaterial({
-    color: 0x111316,
-    roughness: 0.12,
-    metalness: 0.25
-  });
-  const rcLidMat = new THREE.MeshStandardMaterial({
-    color: 0xffffff,
-    roughness: 0.20,
-    metalness: 0.02
-  });
-  const rcPlinthMat = new THREE.MeshStandardMaterial({
-    color: 0x222427,
-    roughness: 0.75
-  });
-  const paddleMat = new THREE.MeshStandardMaterial({
-    color: 0xfbfaf6,
-    roughness: 0.35,
-    metalness: 0.02
-  });
-
-  // Rice Cooker Plinth / Anti-slip Base
-  const rcBase = new THREE.Mesh(new THREE.CylinderGeometry(rcW * 0.44, rcW * 0.46, 0.018, 28), rcPlinthMat);
-  rcBase.scale.set(rcD / rcW, 1, 1);
-  rcBase.position.set(mx(rcCenterX), rcBaseY + 0.009, rcCenterZ);
-  registerItem(rcBase, rcDim);
-  kitchenGroup.add(rcBase);
-
-  // Main Rounded Ceramic Capsule Body
-  const rcBody = new THREE.Mesh(new THREE.CylinderGeometry(rcW * 0.48, rcW * 0.46, rcH * 0.65, 32), rcBodyMat);
-  rcBody.scale.set(rcD / rcW, 1, 1);
-  rcBody.position.set(mx(rcCenterX), rcBaseY + 0.018 + rcH * 0.325, rcCenterZ);
-  rcBody.castShadow = true;
-  registerItem(rcBody, rcDim);
-  kitchenGroup.add(rcBody);
-
-  // Champagne Rose-Gold Metallic Accent Ring
-  const rcRing = new THREE.Mesh(new THREE.CylinderGeometry(rcW * 0.485, rcW * 0.485, 0.012, 32), rcTrimMat);
-  rcRing.scale.set(rcD / rcW, 1, 1);
-  rcRing.position.set(mx(rcCenterX), rcBaseY + 0.018 + rcH * 0.65, rcCenterZ);
-  kitchenGroup.add(rcRing);
-
-  // Domed Lid with Soft Contours
-  const rcLid = new THREE.Mesh(new THREE.SphereGeometry(rcW * 0.47, 24, 16, 0, Math.PI * 2, 0, Math.PI * 0.36), rcLidMat);
-  rcLid.scale.set(rcD / rcW, 0.55, 1);
-  rcLid.position.set(mx(rcCenterX), rcBaseY + rcH * 0.68, rcCenterZ);
-  rcLid.castShadow = true;
-  kitchenGroup.add(rcLid);
-
-  // Steam Vent Cap with vent slits on top
-  const rcVent = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.036, 0.012, 20), rcTrimMat);
-  rcVent.position.set(mx(rcCenterX + (isCarportLeft ? -0.035 : 0.035)), rcBaseY + rcH + 0.004, rcCenterZ);
-  kitchenGroup.add(rcVent);
-  const rcVentInner = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.014, 16), rcPlinthMat);
-  rcVentInner.position.set(mx(rcCenterX + (isCarportLeft ? -0.035 : 0.035)), rcBaseY + rcH + 0.005, rcCenterZ);
-  kitchenGroup.add(rcVentInner);
-
-  // Chrome Push-Open Button on lid front
-  const rcBtn = new THREE.Mesh(new THREE.BoxGeometry(0.014, 0.020, 0.042), stainlessMat);
-  rcBtn.position.set(mx(rcCenterX - (isCarportLeft ? rcD * 0.46 : -rcD * 0.46)), rcBaseY + rcH * 0.70, rcCenterZ);
-  kitchenGroup.add(rcBtn);
-
-  // Angled Digital LED Display & Touch Control Panel on front
-  const rcPanel = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.070, 0.13), rcDisplayMat);
-  rcPanel.rotation.z = isCarportLeft ? 0.28 : -0.28;
-  rcPanel.position.set(mx(rcCenterX - (isCarportLeft ? rcD * 0.44 : -rcD * 0.44)), rcBaseY + rcH * 0.42, rcCenterZ);
-  kitchenGroup.add(rcPanel);
-
-  // Glowing Amber Digital Timer ("0:18" cooking countdown)
-  const rcTimerGlow = new THREE.Mesh(new THREE.BoxGeometry(0.003, 0.016, 0.042), new THREE.MeshBasicMaterial({ color: 0xffaa22 }));
-  rcTimerGlow.rotation.z = isCarportLeft ? 0.28 : -0.28;
-  rcTimerGlow.position.set(mx(rcCenterX - (isCarportLeft ? rcD * 0.447 : -rcD * 0.447)), rcBaseY + rcH * 0.45, rcCenterZ);
-  kitchenGroup.add(rcTimerGlow);
-
-  // Illuminated Status Indicators (COOK: Red LED, WARM: Green LED)
-  const rcCookLed = new THREE.Mesh(new THREE.CircleGeometry(0.004, 12), new THREE.MeshBasicMaterial({ color: 0xff2222 }));
-  rcCookLed.rotation.y = isCarportLeft ? -Math.PI / 2 : Math.PI / 2;
-  rcCookLed.position.set(mx(rcCenterX - (isCarportLeft ? rcD * 0.451 : -rcD * 0.451)), rcBaseY + rcH * 0.38, rcCenterZ - 0.035);
-  kitchenGroup.add(rcCookLed);
-
-  const rcWarmLed = new THREE.Mesh(new THREE.CircleGeometry(0.004, 12), new THREE.MeshBasicMaterial({ color: 0x33ee66 }));
-  rcWarmLed.rotation.y = isCarportLeft ? -Math.PI / 2 : Math.PI / 2;
-  rcWarmLed.position.set(mx(rcCenterX - (isCarportLeft ? rcD * 0.451 : -rcD * 0.451)), rcBaseY + rcH * 0.38, rcCenterZ + 0.035);
-  kitchenGroup.add(rcWarmLed);
-
-  // Arched Folding Carry Handle
-  const rcHandle = new THREE.Mesh(new THREE.TorusGeometry(rcW * 0.40, 0.008, 10, 24, Math.PI), rcBodyMat);
-  rcHandle.position.set(mx(rcCenterX), rcBaseY + rcH * 0.75, rcCenterZ);
-  rcHandle.rotation.x = Math.PI / 2;
-  rcHandle.rotation.z = isCarportLeft ? Math.PI / 2 : -Math.PI / 2;
-  kitchenGroup.add(rcHandle);
-
-  // RICE COOKER UTENSIL 1: Rice Paddle (Shamoji) in Holster on cooker side
-  const paddleHolster = new THREE.Mesh(new THREE.BoxGeometry(0.026, 0.075, 0.035), rcBodyMat);
-  const holsterZ = rcCenterZ + (rcW * 0.46 + 0.016);
-  paddleHolster.position.set(mx(rcCenterX), rcBaseY + 0.09, holsterZ);
-  kitchenGroup.add(paddleHolster);
-
-  // Handle standing in holster
-  const pHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.005, 0.11, 16), paddleMat);
-  pHandle.position.set(mx(rcCenterX), rcBaseY + 0.12, holsterZ);
-  kitchenGroup.add(pHandle);
-
-  // Textured Paddle Spatula Head
-  const pHead = new THREE.Mesh(new THREE.BoxGeometry(0.010, 0.085, 0.058), paddleMat);
-  pHead.position.set(mx(rcCenterX), rcBaseY + 0.20, holsterZ);
-  pHead.castShadow = true;
-  kitchenGroup.add(pHead);
-
-  // Dimpled embossed non-stick textured dots on paddle
-  for (let rdi = 0; rdi < 8; rdi++) {
-    const pDot = new THREE.Mesh(new THREE.SphereGeometry(0.0022, 8, 8), paddleMat);
-    const pdy = (rdi % 4) * 0.017 - 0.025;
-    const pdz = Math.floor(rdi / 4) * 0.020 - 0.010;
-    pDot.position.set(mx(rcCenterX + (isCarportLeft ? -0.006 : 0.006)), rcBaseY + 0.20 + pdy, holsterZ + pdz);
-    kitchenGroup.add(pDot);
-  }
-
-  // RICE COOKER UTENSIL 2: Ceramic Spoon Rest with Flat Rice Spatula beside cooker
-  const spoonRest = new THREE.Mesh(new THREE.CylinderGeometry(0.040, 0.035, 0.010, 20), ceramicWhiteMat);
-  spoonRest.scale.set(1.3, 1, 0.85);
-  spoonRest.position.set(mx(longWallX - 0.14), counterTopY + 0.005, rcCenterZ);
-  kitchenGroup.add(spoonRest);
-  const restPaddle = new THREE.Mesh(new THREE.BoxGeometry(0.006, 0.004, 0.11), paddleMat);
-  restPaddle.rotation.y = 0.20;
-  restPaddle.position.set(mx(longWallX - 0.14), counterTopY + 0.012, rcCenterZ);
-  kitchenGroup.add(restPaddle);
-
-
-  // --- 2B2. CHEF'S KNIFE BLOCK SET ON COUNTER (Z = -0.12m) ---
-  const kbX = longWallX - 0.16;
-  const kbZ = -0.12;
-  const kbBlock = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.20, 0.09), matteBlackMat);
-  kbBlock.rotation.x = 0.22;
-  kbBlock.position.set(mx(kbX), counterTopY + 0.10, kbZ);
-  kbBlock.castShadow = true;
-  kitchenGroup.add(kbBlock);
-  for (let ki = 0; ki < 6; ki++) {
-    const kHandle = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.08, 0.020), matteBlackMat);
-    kHandle.rotation.x = 0.22;
-    kHandle.position.set(mx(kbX - 0.030 + (ki % 2) * 0.06), counterTopY + 0.21 + Math.floor(ki / 2) * 0.02, kbZ - 0.022 + Math.floor(ki / 2) * 0.022);
-    kitchenGroup.add(kHandle);
-  }
-
-
-  // --- 2B3. COUNTERTOP DISH DRYING RACK (Z in [0.02, 0.23], directly beside sink) ---
-  const drW = 0.21; // 210 mm wide (Z-axis)
-  const drD = 0.38; // 380 mm deep (X-axis)
-  const drH = 0.17; // 170 mm high
-  const drCenterZ = 0.125; // Placed right beside workstation sink (which starts at Z = 0.25)
-  const drCenterX = longWallX - 0.28; // X = 2.22m
-
-  const drDim = {
-    label: "380 × 220 mm",
-    p1: [drCenterX - drD / 2, counterTopY + drH, drCenterZ],
-    p2: [drCenterX + drD / 2, counterTopY + drH, drCenterZ],
-    axis: 'x'
-  };
-
-  const drTrayMat = new THREE.MeshStandardMaterial({
-    color: 0x1d1f22,
-    roughness: 0.35,
-    metalness: 0.10
-  });
-  const drWireMat = new THREE.MeshStandardMaterial({
-    color: 0x2b2e32,
-    roughness: 0.28,
-    metalness: 0.80
-  });
-  const drChromeMat = new THREE.MeshStandardMaterial({
-    color: 0xd8dbdf,
-    roughness: 0.18,
-    metalness: 0.92
-  });
-
-  // 1. Slanted Drainage Base Tray with lip directing water runoff toward sink
-  const drTray = new THREE.Mesh(new THREE.BoxGeometry(drD, 0.016, drW), drTrayMat);
-  drTray.position.set(mx(drCenterX), counterTopY + 0.008, drCenterZ);
-  drTray.castShadow = true;
-  drTray.receiveShadow = true;
-  registerItem(drTray, drDim);
-  kitchenGroup.add(drTray);
-
-  // Drainage spout lip extending over sink margin
-  const drSpout = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.012, 0.035), drTrayMat);
-  drSpout.position.set(mx(drCenterX), counterTopY + 0.006, drCenterZ + drW / 2 + 0.015);
-  kitchenGroup.add(drSpout);
-
-  // 2. Stainless Steel Support Legs (4 Corner Feet with non-slip caps)
-  [
-    [-drD / 2 + 0.02, -drW / 2 + 0.02],
-    [drD / 2 - 0.02, -drW / 2 + 0.02],
-    [-drD / 2 + 0.02, drW / 2 - 0.02],
-    [drD / 2 - 0.02, drW / 2 - 0.02]
-  ].forEach(([fx, fz]) => {
-    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, drH, 12), drWireMat);
-    foot.position.set(mx(drCenterX + (isCarportLeft ? fx : -fx)), counterTopY + drH / 2, drCenterZ + fz);
-    kitchenGroup.add(foot);
-  });
-
-  // 3. Perimeter Wire Guard Rails (Upper & Lower)
-  [0.05, drH].forEach(ry => {
-    const rLong1 = new THREE.Mesh(new THREE.BoxGeometry(drD, 0.005, 0.005), drWireMat);
-    rLong1.position.set(mx(drCenterX), counterTopY + ry, drCenterZ - drW / 2 + 0.015);
-    kitchenGroup.add(rLong1);
-    const rLong2 = new THREE.Mesh(new THREE.BoxGeometry(drD, 0.005, 0.005), drWireMat);
-    rLong2.position.set(mx(drCenterX), counterTopY + ry, drCenterZ + drW / 2 - 0.015);
-    kitchenGroup.add(rLong2);
-    const rCross1 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.005, drW - 0.03), drWireMat);
-    rCross1.position.set(mx(drCenterX - (isCarportLeft ? drD / 2 - 0.015 : -drD / 2 + 0.015)), counterTopY + ry, drCenterZ);
-    kitchenGroup.add(rCross1);
-    const rCross2 = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.005, drW - 0.03), drWireMat);
-    rCross2.position.set(mx(drCenterX + (isCarportLeft ? drD / 2 - 0.015 : -drD / 2 + 0.015)), counterTopY + ry, drCenterZ);
-    kitchenGroup.add(rCross2);
-  });
-
-  // 4. Slotted Upright Wire Dividers with Standing Ceramic Plates
-  const numDryingPlates = 5;
-  const plateStep = (drD * 0.65) / numDryingPlates;
-  for (let pi = 0; pi < numDryingPlates; pi++) {
-    const px = -drD * 0.32 + pi * plateStep;
-    // Upright wire loop
-    const uWire = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.09, drW * 0.60), drWireMat);
-    uWire.position.set(mx(drCenterX + (isCarportLeft ? px : -px)), counterTopY + 0.055, drCenterZ - 0.015);
-    kitchenGroup.add(uWire);
-
-    // Ceramic Plate drying in rack
-    const plateRadius = pi % 2 === 0 ? 0.090 : 0.075;
-    const plateMat = pi === 1
-      ? new THREE.MeshStandardMaterial({ color: 0x90b5ad, roughness: 0.25 }) // Celadon ceramic
-      : ceramicWhiteMat;
-    const plateMesh = new THREE.Mesh(new THREE.CylinderGeometry(plateRadius, plateRadius, 0.006, 24), plateMat);
-    plateMesh.rotation.z = Math.PI / 2;
-    plateMesh.position.set(mx(drCenterX + (isCarportLeft ? px : -px)), counterTopY + plateRadius + 0.015, drCenterZ - 0.015);
-    plateMesh.castShadow = true;
-    kitchenGroup.add(plateMesh);
-  }
-
-  // 5. Side Cutlery Caddy / Utensil Basket holding spoons, forks, chopsticks
-  const caddyD = 0.09;
-  const caddyW = 0.065;
-  const caddyH = 0.11;
-  const caddyCenterX = drCenterX + (isCarportLeft ? drD / 2 - caddyD / 2 : -drD / 2 + caddyD / 2);
-  const caddyCenterZ = drCenterZ + drW / 2 + caddyW / 2 - 0.005;
-  const caddyBox = new THREE.Mesh(new THREE.BoxGeometry(caddyD, caddyH, caddyW), drTrayMat);
-  caddyBox.position.set(mx(caddyCenterX), counterTopY + caddyH / 2 + 0.018, caddyCenterZ);
-  caddyBox.castShadow = true;
-  kitchenGroup.add(caddyBox);
-
-  // Cutlery inside caddy (spoons, forks, and bamboo chopsticks)
-  [-0.022, 0.022].forEach((cx, ci) => {
-    // Spoon
-    const spoonStem = new THREE.Mesh(new THREE.CylinderGeometry(0.0025, 0.0025, 0.13, 12), drChromeMat);
-    spoonStem.rotation.x = 0.15;
-    spoonStem.position.set(mx(caddyCenterX + (isCarportLeft ? cx : -cx)), counterTopY + 0.11, caddyCenterZ - 0.010);
-    kitchenGroup.add(spoonStem);
-    const spoonBowl = new THREE.Mesh(new THREE.SphereGeometry(0.011, 12, 10), drChromeMat);
-    spoonBowl.scale.set(0.7, 1.2, 0.35);
-    spoonBowl.position.set(mx(caddyCenterX + (isCarportLeft ? cx : -cx)), counterTopY + 0.17, caddyCenterZ - 0.014);
-    kitchenGroup.add(spoonBowl);
-
-    // Chopsticks (Bamboo)
-    const chopstick = new THREE.Mesh(new THREE.CylinderGeometry(0.0022, 0.0016, 0.18, 8), corkMat);
-    chopstick.rotation.z = ci === 0 ? 0.10 : -0.08;
-    chopstick.position.set(mx(caddyCenterX + (isCarportLeft ? cx + 0.012 : -cx - 0.012)), counterTopY + 0.13, caddyCenterZ + 0.012);
-    kitchenGroup.add(chopstick);
-  });
-
-  // 6. Inverted Drying Glass Tumblers on rear wire rack section
-  [-0.06, 0.06].forEach((gx) => {
-    const glassTumbler = new THREE.Mesh(new THREE.CylinderGeometry(0.028, 0.033, 0.085, 16), clearGlassJarMat);
-    glassTumbler.position.set(mx(drCenterX + (isCarportLeft ? gx : -gx)), counterTopY + 0.060, drCenterZ + 0.045);
-    kitchenGroup.add(glassTumbler);
-  });
-
-
-  // --- 2C. WASHING STATION: CONFIRMED WORKSTATION SINK (800 x 500 x 254 mm) (Z in [0.25, 1.25]) ---
-  const sinkSecLen = 1.00;
-  const sinkCenterZ = (0.25 + 1.25) / 2; // 0.75m
-  const sinkW = 0.80; // 800 mm along long wall (Z-axis)
-  const sinkD = 0.50; // 500 mm depth front-to-back (X-axis)
-  const sinkH = 0.254; // 254 mm basin depth (10 inches)
-  const sinkCenterX = longWallX - counterDepth / 2; // 2.20m (centered in 600mm counter)
+  // 1B. Washing Station & Modena Multifunction Sink Granit 2 (800mm: X in [0.60, 1.40])
+  const sinkSecW = 0.80;
+  const sinkCenterX = 1.00;
+  const sinkW = 0.80;
+  const sinkD = 0.50;
+  const sinkH = 0.254;
 
   const sinkDim = {
-    label: "800 × 500 mm",
-    p1: [longEdgeX, 0.93, sinkCenterZ - sinkW / 2],
-    p2: [longEdgeX, 0.93, sinkCenterZ + sinkW / 2],
+    label: "Modena Granit 2 Bowl (800 × 500 mm)",
+    p1: [sinkCenterX - sinkW / 2, 0.93, facingWallZ + counterDepth + 0.02],
+    p2: [sinkCenterX + sinkW / 2, 0.93, facingWallZ + counterDepth + 0.02],
+    axis: 'x'
+  };
+
+  addBox(sinkSecW, plinthHeight, counterDepth - 0.06, plinthMat, sinkCenterX, plinthHeight / 2, sPlinthZ);
+  // Cabinet interior cavity under sink
+  addBox(sinkSecW - 0.04, cabHeight - 0.04, counterDepth - 0.08, matteBlackMat, sinkCenterX, plinthHeight + cabHeight / 2, sCenterZ - 0.02);
+
+  // P-Trap drainage pipe assembly inside cabinet
+  const pTrapDrop = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.24, 16), chromeMat);
+  pTrapDrop.position.set(mx(sinkCenterX), 0.50, sCenterZ);
+  kitchenGroup.add(pTrapDrop);
+  const pTrapCurve = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.022, 12, 20, Math.PI), chromeMat);
+  pTrapCurve.position.set(mx(sinkCenterX), 0.38, sCenterZ);
+  kitchenGroup.add(pTrapCurve);
+
+  // Waste Sorting Eco Bins inside under-sink cabinet
+  const binMatGrey = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.5 });
+  const binMatGreen = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.5 });
+  addBox(0.24, 0.34, 0.22, binMatGrey, sinkCenterX - 0.20, plinthHeight + 0.17, sCenterZ);
+  addBox(0.24, 0.34, 0.22, binMatGreen, sinkCenterX + 0.20, plinthHeight + 0.17, sCenterZ);
+
+  // --- INTERACTIVE UNDER-SINK CABINET CONTROLLER ---
+  const sinkCabinetController = {
+    id: "sink_cabinet",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playCabinet(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Close Sink Cabinet" : "Open Under-Sink Cabinet";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 8.5, delta);
+      leftDoorHinge.rotation.y = this.progress * (isCarportLeft ? -1.55 : 1.55);
+      rightDoorHinge.rotation.y = this.progress * (isCarportLeft ? 1.55 : -1.55);
+    }
+  };
+
+  // Left Door Hinge Group at X = 0.60
+  const leftDoorHinge = new THREE.Group();
+  leftDoorHinge.position.set(mx(0.60), plinthHeight + cabHeight / 2, facingWallZ + counterDepth);
+  kitchenGroup.add(leftDoorHinge);
+  const leftDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.395, cabHeight - 0.01, 0.02), matteBlackMat);
+  leftDoorMesh.position.set(isCarportLeft ? 0.395 / 2 : -0.395 / 2, 0, 0);
+  leftDoorMesh.castShadow = true;
+  leftDoorHinge.add(leftDoorMesh);
+  registerInteractable(leftDoorMesh, sinkCabinetController);
+
+  // Right Door Hinge Group at X = 1.40
+  const rightDoorHinge = new THREE.Group();
+  rightDoorHinge.position.set(mx(1.40), plinthHeight + cabHeight / 2, facingWallZ + counterDepth);
+  kitchenGroup.add(rightDoorHinge);
+  const rightDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.395, cabHeight - 0.01, 0.02), matteBlackMat);
+  rightDoorMesh.position.set(isCarportLeft ? -0.395 / 2 : 0.395 / 2, 0, 0);
+  rightDoorMesh.castShadow = true;
+  rightDoorHinge.add(rightDoorMesh);
+  registerInteractable(rightDoorMesh, sinkCabinetController);
+
+  // Countertop Marble surround behind sink
+  const rearMarbleD = counterDepth - sinkD;
+  addBox(sinkW, slabThick, rearMarbleD, marbleMat, sinkCenterX, counterTopY - slabThick / 2, facingWallZ + rearMarbleD / 2, 0, sinkDim);
+
+  // Granite Apron Front (Exposed at Z = -0.55m)
+  const apronThick = 0.035;
+  const apronY = counterTopY - sinkH / 2;
+  const apronZ = facingWallZ + counterDepth + apronThick / 2 - 0.008;
+  const apronMesh = addBox(sinkW, sinkH, apronThick, sinkMatteMat, sinkCenterX, apronY, apronZ, 0, sinkDim);
+
+  // Basin Floors for Bowl 1 and Bowl 2
+  const b1Len = 0.363;
+  const b2Len = 0.363;
+  const bWid = 0.375;
+  const bFloorY = counterTopY - sinkH + 0.015;
+  const bCenterZ = facingWallZ + 0.10 + bWid / 2 + 0.02; // -0.84m
+  const b1CenterX = sinkCenterX - sinkW / 2 + 0.024 + b1Len / 2; // ~0.825m
+  const b2CenterX = sinkCenterX + sinkW / 2 - 0.024 - b2Len / 2; // ~1.175m
+
+  addBox(b1Len, 0.015, bWid, sinkMatteMat, b1CenterX, bFloorY, bCenterZ, 0, sinkDim);
+  addBox(b2Len, 0.015, bWid, sinkMatteMat, b2CenterX, bFloorY, bCenterZ, 0, sinkDim);
+
+  // Basin Outer Walls & Central Ridge Divider
+  addBox(0.024, sinkH, bWid, sinkMatteMat, sinkCenterX - sinkW / 2 + 0.012, counterTopY - sinkH / 2, bCenterZ, 0, sinkDim);
+  addBox(0.024, sinkH, bWid, sinkMatteMat, sinkCenterX + sinkW / 2 - 0.012, counterTopY - sinkH / 2, bCenterZ, 0, sinkDim);
+  addBox(sinkW - 0.04, sinkH, 0.024, sinkMatteMat, sinkCenterX, counterTopY - sinkH / 2, bCenterZ - bWid / 2 - 0.012, 0, sinkDim);
+  addBox(sinkW - 0.04, sinkH, 0.024, sinkMatteMat, sinkCenterX, counterTopY - sinkH / 2, bCenterZ + bWid / 2 + 0.012, 0, sinkDim);
+  addBox(0.026, sinkH - 0.02, bWid, sinkMatteMat, sinkCenterX, counterTopY - (sinkH - 0.02) / 2 - 0.01, bCenterZ, 0, sinkDim);
+
+  // Stainless Basket Strainers
+  [b1CenterX, b2CenterX].forEach(drainX => {
+    const drainMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.052, 0.052, 0.01, 24), stainlessMat);
+    drainMesh.position.set(mx(drainX), bFloorY + 0.01, bCenterZ);
+    kitchenGroup.add(drainMesh);
+  });
+
+  // Workstation Natural Oak Cutting Board
+  const cbW = 0.28;
+  const cbD = 0.48;
+  const cbH = 0.022;
+  const boardDim = {
+    label: "Oak Cutting Board (280 × 480 mm)",
+    p1: [b1CenterX - cbW / 2, counterTopY + cbH, bCenterZ],
+    p2: [b1CenterX + cbW / 2, counterTopY + cbH, bCenterZ],
+    axis: 'x'
+  };
+  addBox(cbW, cbH, cbD, oakMat, b1CenterX, counterTopY + cbH / 2 - 0.006, bCenterZ, 0, boardDim);
+
+  // --- INTERACTIVE TALL MATTE BLACK FAUCET & WATER CONTROLLER ---
+  const faucetZ = facingWallZ + 0.07;
+  const faucetDim = {
+    label: "Gooseneck Mixer Faucet",
+    p1: [sinkCenterX, counterTopY + 0.38, faucetZ - 0.06],
+    p2: [sinkCenterX, counterTopY + 0.38, faucetZ + 0.10],
     axis: 'z'
   };
 
-  // Base cabinet plinth & carcass under sink
-  addBox(counterDepth - 0.06, plinthHeight, sinkSecLen, plinthMat, plinthMidX, plinthHeight / 2, sinkCenterZ);
-  addBox(counterDepth - 0.02, cabHeight, sinkSecLen, matteBlackMat, baseMidX, plinthHeight + cabHeight / 2, sinkCenterZ);
-  addBox(0.025, 0.035, sinkSecLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, sinkCenterZ);
-  // Dual under-sink cabinet door seam
-  addBox(0.005, cabHeight - 0.26, 0.004, recessedGrooveMat, longWallX - counterDepth - 0.002, plinthHeight + (cabHeight - 0.26) / 2, sinkCenterZ);
-
-  // Matte Black Apron Front (Exposed on kitchen face at X = 1.90m)
-  const apronThick = 0.035;
-  const apronY = counterTopY - sinkH / 2;
-  const apronX = longWallX - counterDepth - apronThick / 2 + 0.008;
-  addBox(apronThick, sinkH, sinkW, sinkMatteMat, apronX, apronY, sinkCenterZ, 0, sinkDim);
-
-  // Countertop Marble Surround around 800 x 500 mm sink
-  const sideMarbleL = (sinkSecLen - sinkW) / 2; // ~0.10m on each side
-  addBox(counterDepth, slabThick, sideMarbleL, marbleMat, baseMidX, counterTopY - slabThick / 2, 0.25 + sideMarbleL / 2, 0, sinkDim);
-  addBox(counterDepth, slabThick, sideMarbleL, marbleMat, baseMidX, counterTopY - slabThick / 2, 1.25 - sideMarbleL / 2, 0, sinkDim);
-  // Marble behind sink basin (50mm margin against backsplash for faucet deck)
-  const rearMarbleD = counterDepth - sinkD; // ~0.10m
-  addBox(rearMarbleD, slabThick, sinkW, marbleMat, longWallX - rearMarbleD / 2, counterTopY - slabThick / 2, sinkCenterZ, 0, sinkDim);
-
-  // Workstation Basin Interior (800mm L x 500mm W x 254mm H)
-  const sFloorY = counterTopY - sinkH + 0.015;
-  // Basin floor
-  addBox(sinkD - 0.04, 0.015, sinkW - 0.04, sinkMatteMat, sinkCenterX, sFloorY, sinkCenterZ, 0, sinkDim);
-  // Basin walls
-  addBox(sinkD - 0.04, sinkH, 0.02, sinkMatteMat, sinkCenterX, counterTopY - sinkH / 2, sinkCenterZ - sinkW / 2 + 0.01, 0, sinkDim);
-  addBox(sinkD - 0.04, sinkH, 0.02, sinkMatteMat, sinkCenterX, counterTopY - sinkH / 2, sinkCenterZ + sinkW / 2 - 0.01, 0, sinkDim);
-  addBox(0.02, sinkH, sinkW - 0.04, sinkMatteMat, longWallX - 0.06, counterTopY - sinkH / 2, sinkCenterZ, 0, sinkDim);
-
-  // Integrated Workstation Stepped Ledge for sliding cutting board & basket
-  const ledgeY = counterTopY - 0.018;
-  addBox(sinkD - 0.04, 0.008, 0.015, stainlessMat, sinkCenterX, ledgeY, sinkCenterZ - sinkW / 2 + 0.025);
-  addBox(sinkD - 0.04, 0.008, 0.015, stainlessMat, sinkCenterX, ledgeY, sinkCenterZ + sinkW / 2 - 0.025);
-
-  // Stainless Basket Strainer Drain in Sink Floor with stopper pin
-  const drainMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.01, 24), stainlessMat);
-  drainMesh.position.set(mx(sinkCenterX), sFloorY + 0.01, sinkCenterZ);
-  kitchenGroup.add(drainMesh);
-  const drainPin = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.03, 12), stainlessMat);
-  drainPin.position.set(mx(sinkCenterX), sFloorY + 0.025, sinkCenterZ);
-  kitchenGroup.add(drainPin);
-
-  // P-Trap Drainage Pipe Assembly modeled inside cabinet under sink
-  const pipeMat = new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.35, metalness: 0.85 });
-  const pTrapDrop = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.16, 16), pipeMat);
-  pTrapDrop.position.set(mx(sinkCenterX), sFloorY - 0.08, sinkCenterZ);
-  kitchenGroup.add(pTrapDrop);
-  const pTrapCurve = new THREE.Mesh(new THREE.TorusGeometry(0.05, 0.022, 12, 20, Math.PI), pipeMat);
-  pTrapCurve.position.set(mx(sinkCenterX), sFloorY - 0.16, sinkCenterZ);
-  kitchenGroup.add(pTrapCurve);
-  const pTrapOutlet = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.022, 0.20, 16), pipeMat);
-  pTrapOutlet.rotation.z = Math.PI / 2;
-  pTrapOutlet.position.set(mx(sinkCenterX + (isCarportLeft ? 0.10 : -0.10)), sFloorY - 0.16, sinkCenterZ);
-  kitchenGroup.add(pTrapOutlet);
-
-  // Workstation Natural Oak Cutting Board (sliding over sink ledge)
-  const cbW = 0.28; // 280 mm
-  const cbD = sinkD - 0.02; // 480 mm
-  const cbH = 0.022; // 22 mm solid oak
-  const cbZ = sinkCenterZ + sinkW / 2 - cbW / 2 - 0.02;
-  addBox(cbD, cbH, cbW, oakMat, sinkCenterX, counterTopY + cbH / 2 - 0.005, cbZ, 0, sinkDim);
-
-  // Wire Dish Colander Basket (sliding over left side of sink)
-  const wireBasketMat = new THREE.MeshStandardMaterial({ color: 0x333538, roughness: 0.35, metalness: 0.70 });
-  const wbZ = sinkCenterZ - sinkW / 2 + 0.14;
-  const wbW = 0.24;
-  const wbD = sinkD - 0.04;
-  addBox(wbD, 0.07, 0.01, wireBasketMat, sinkCenterX, counterTopY - 0.015, wbZ - wbW / 2 + 0.005);
-  addBox(wbD, 0.07, 0.01, wireBasketMat, sinkCenterX, counterTopY - 0.015, wbZ + wbW / 2 - 0.005);
-  addBox(0.01, 0.07, wbW, wireBasketMat, sinkCenterX - wbD / 2 + 0.005, counterTopY - 0.015, wbZ);
-  addBox(0.01, 0.07, wbW, wireBasketMat, sinkCenterX + wbD / 2 - 0.005, counterTopY - 0.015, wbZ);
-  for (let di = 0; di < 3; di++) {
-    const dPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.006, 20), ceramicWhiteMat);
-    dPlate.rotation.z = Math.PI / 2 + 0.15;
-    dPlate.position.set(mx(sinkCenterX - 0.07 + di * 0.06), counterTopY + 0.04, wbZ);
-    kitchenGroup.add(dPlate);
-  }
-
-  // Warranty Card & Installation Guide Booklet on Marble Deck
-  const docMat = new THREE.MeshStandardMaterial({ color: 0xfcfcfc, roughness: 0.60 });
-  const docMesh = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.006, 0.16), docMat);
-  docMesh.rotation.y = 0.25;
-  docMesh.position.set(mx(longWallX - 0.15), counterTopY + 0.003, 0.30);
-  kitchenGroup.add(docMesh);
-  const sealMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.002, 16), new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.25 }));
-  sealMesh.position.set(mx(longWallX - 0.15), counterTopY + 0.007, 0.30);
-  kitchenGroup.add(sealMesh);
-
-  // Tall Matte Black Gooseneck Arch Faucet (Mounted on rear marble deck behind sink)
-  const faucetX = longWallX - 0.065;
   const faucetBase = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.028, 0.045, 20), faucetMat);
-  faucetBase.position.set(mx(faucetX), counterTopY + 0.022, sinkCenterZ);
-  registerItem(faucetBase, sinkDim);
+  faucetBase.position.set(mx(sinkCenterX), counterTopY + 0.022, faucetZ);
   kitchenGroup.add(faucetBase);
 
   const faucetStem = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.20, 16), faucetMat);
-  faucetStem.position.set(mx(faucetX), counterTopY + 0.045 + 0.10, sinkCenterZ);
+  faucetStem.position.set(mx(sinkCenterX), counterTopY + 0.045 + 0.10, faucetZ);
   kitchenGroup.add(faucetStem);
 
   const faucetArchGeo = new THREE.TorusGeometry(0.08, 0.013, 12, 24, Math.PI);
   const faucetArch = new THREE.Mesh(faucetArchGeo, faucetMat);
-  faucetArch.rotation.x = Math.PI / 2;
-  faucetArch.rotation.z = isCarportLeft ? Math.PI / 2 : -Math.PI / 2;
-  faucetArch.position.set(mx(faucetX - (isCarportLeft ? 0.08 : -0.08)), counterTopY + 0.245, sinkCenterZ);
+  faucetArch.rotation.y = isCarportLeft ? Math.PI / 2 : -Math.PI / 2;
+  faucetArch.position.set(mx(sinkCenterX), counterTopY + 0.245, faucetZ + (isCarportLeft ? 0.08 : -0.08));
   kitchenGroup.add(faucetArch);
 
+  const nozzleZ = faucetZ + 0.16;
+  const nozzleY = counterTopY + 0.21;
   const faucetNozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.015, 0.012, 0.055, 16), faucetMat);
-  faucetNozzle.position.set(mx(faucetX - 0.16), counterTopY + 0.21, sinkCenterZ);
+  faucetNozzle.position.set(mx(sinkCenterX), nozzleY, nozzleZ);
   kitchenGroup.add(faucetNozzle);
 
-  // Single-lever side mixer handle
+  // Faucet Lever Pivot Group
+  const leverHinge = new THREE.Group();
+  leverHinge.position.set(mx(sinkCenterX + 0.038), counterTopY + 0.08, faucetZ);
+  kitchenGroup.add(leverHinge);
   const leverHub = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, 0.026, 16), faucetMat);
-  leverHub.rotation.x = Math.PI / 2;
-  leverHub.position.set(mx(faucetX), counterTopY + 0.08, sinkCenterZ + 0.038);
-  kitchenGroup.add(leverHub);
+  leverHub.rotation.z = Math.PI / 2;
+  leverHinge.add(leverHub);
   const leverStick = new THREE.Mesh(new THREE.CylinderGeometry(0.005, 0.005, 0.075, 12), faucetMat);
-  leverStick.position.set(mx(faucetX), counterTopY + 0.12, sinkCenterZ + 0.052);
-  kitchenGroup.add(leverStick);
+  leverStick.position.set(isCarportLeft ? 0.014 : -0.014, 0.036, 0);
+  leverHinge.add(leverStick);
 
+  // Animated Flowing Water Stream
+  const waterStreamGeo = new THREE.CylinderGeometry(0.010, 0.014, 0.45, 16);
+  waterStreamGeo.translate(0, -0.225, 0);
+  const waterStream = new THREE.Mesh(waterStreamGeo, waterMat);
+  waterStream.position.set(mx(sinkCenterX), nozzleY - 0.03, nozzleZ);
+  waterStream.visible = false;
+  kitchenGroup.add(waterStream);
 
-  // --- 2D. OPEN WARM OAK SHELVING & DISPLAY UNIT ABOVE SINK (850mm: Z in [0.32, 1.18]) ---
-  const oakUnitLen = 0.86;
-  const oakUnitCenterZ = sinkCenterZ; // 0.75m
-  const oakUnitDepth = 0.35;
-  const oakUnitCenterX = longWallX - oakUnitDepth / 2;
-  const oakDim = {
-    label: "850 mm",
-    p1: [longWallX - oakUnitDepth - 0.02, 1.95, oakUnitCenterZ - oakUnitLen / 2],
-    p2: [longWallX - oakUnitDepth - 0.02, 1.95, oakUnitCenterZ + oakUnitLen / 2],
+  // Water Splash Ripple Disc in Sink Basin
+  const waterRippleGeo = new THREE.RingGeometry(0.015, 0.09, 24);
+  waterRippleGeo.rotateX(-Math.PI / 2);
+  const waterRipple = new THREE.Mesh(waterRippleGeo, waterMat);
+  waterRipple.position.set(mx(sinkCenterX), bFloorY + 0.018, nozzleZ);
+  waterRipple.visible = false;
+  kitchenGroup.add(waterRipple);
+
+  const sinkController = {
+    id: "sink_faucet",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playWaterStream(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Turn Off Water Faucet" : "Turn On Kitchen Faucet";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 10, delta);
+      leverHinge.rotation.x = this.progress * 0.50;
+      waterStream.visible = this.progress > 0.05;
+      waterStream.scale.set(1, this.progress, 1);
+      waterRipple.visible = this.progress > 0.1;
+      const rippleWave = 0.88 + Math.sin(Date.now() * 0.015) * 0.16;
+      waterRipple.scale.set(rippleWave, 1, rippleWave);
+    }
+  };
+
+  registerInteractable(faucetBase, sinkController);
+  registerInteractable(faucetStem, sinkController);
+  registerInteractable(faucetArch, sinkController);
+  registerInteractable(faucetNozzle, sinkController);
+  registerInteractable(leverStick, sinkController);
+  registerInteractable(apronMesh, sinkController);
+
+  // 1C. Right Prep Counter & IKEA FLUNDRA Dish Rack (500mm: X in [1.40, 1.90])
+  const flW = 0.36;
+  const flD = 0.46;
+  const flH = 0.12;
+  const prepCenterX = 1.65;
+  addBox(0.50, plinthHeight, counterDepth - 0.06, plinthMat, prepCenterX, plinthHeight / 2, sPlinthZ);
+  addBox(0.50, cabHeight, counterDepth - 0.02, matteBlackMat, prepCenterX, plinthHeight + cabHeight / 2, sCenterZ);
+  addBox(0.50, 0.035, 0.025, recessedGrooveMat, prepCenterX, counterBaseY - 0.02, facingWallZ + counterDepth);
+  addBox(0.50, slabThick, counterDepth, marbleMat, prepCenterX, counterTopY - slabThick / 2, sCenterZ);
+
+  // IKEA FLUNDRA Dish Rack Model
+  const flY = counterTopY + flH / 2;
+  const flundraDim = {
+    label: "IKEA FLUNDRA Dish Rack (460 × 360 × 120 mm)",
+    p1: [prepCenterX - flW / 2, counterTopY + flH, sCenterZ - flD / 2],
+    p2: [prepCenterX + flW / 2, counterTopY + flH, sCenterZ + flD / 2],
+    axis: 'x'
+  };
+  addBox(flW, 0.012, flD, flundraMat, prepCenterX, counterTopY + 0.006, sCenterZ, 0, flundraDim);
+  addBox(0.015, flH, flD, flundraMat, prepCenterX - flW / 2 + 0.008, flY, sCenterZ, 0, flundraDim);
+  addBox(0.015, flH, flD, flundraMat, prepCenterX + flW / 2 - 0.008, flY, sCenterZ, 0, flundraDim);
+  addBox(flW, flH, 0.015, flundraMat, prepCenterX, flY, sCenterZ - flD / 2 + 0.008, 0, flundraDim);
+  addBox(flW, flH, 0.015, flundraMat, prepCenterX, flY, sCenterZ + flD / 2 - 0.008, 0, flundraDim);
+
+  // Large ceramic dinner plates drying inside rack
+  const plateMat = new THREE.MeshStandardMaterial({ color: 0xfafafa, roughness: 0.25 });
+  for (let pi = 0; pi < 5; pi++) {
+    const pMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.125, 0.008, 24), plateMat);
+    pMesh.rotation.z = Math.PI / 2;
+    pMesh.position.set(mx(prepCenterX - 0.08 + pi * 0.038), counterTopY + 0.13, sCenterZ);
+    kitchenGroup.add(pMesh);
+  }
+
+  // =========================================================================
+  // 2. SEAMLESS L-JUNCTION CORNER BASE & CONTINUOUS COUNTER (X in [1.90, 2.50], Z in [-1.15, -0.55])
+  // =========================================================================
+  // This seamlessly joins the Short Wall base & Long Wall base into a continuous L-shape!
+  const cornBaseW = 0.60;
+  const cornBaseD = 0.60;
+  const cornBaseCenterX = 1.90 + cornBaseW / 2; // 2.20m
+  const cornBaseCenterZ = -1.15 + cornBaseD / 2; // -0.85m
+
+  // Corner plinth & carcass base
+  addBox(cornBaseW, plinthHeight, cornBaseD - 0.06, plinthMat, cornBaseCenterX, plinthHeight / 2, cornBaseCenterZ - 0.03);
+  addBox(cornBaseW, cabHeight, cornBaseD, matteBlackMat, cornBaseCenterX, plinthHeight + cabHeight / 2, cornBaseCenterZ);
+  // Continuous Corner Marble Countertop slab
+  addBox(cornBaseW, slabThick, cornBaseD, marbleMat, cornBaseCenterX, counterTopY - slabThick / 2, cornBaseCenterZ);
+
+  // Backsplashes meeting perfectly at corner (X = 2.50m, Z = -1.15m)
+  const sBacksplashMat = create10cmBeigeCeramicMat(2.20, backsplashH);
+  addBox(2.20, backsplashH, 0.020, sBacksplashMat, 1.40, backsplashMidY, facingWallZ + 0.010);
+
+  // =========================================================================
+  // 3. UPPER CABINETRY & CORNER CASEWORK (Short Wall X in [0.30, 2.50])
+  // =========================================================================
+
+  // 3A. Left Upper Cabinet (300mm: X in [0.30, 0.60])
+  const leftUpperDim = {
+    label: "300 mm Upper Cabinet",
+    p1: [0.30, upperMidY, facingWallZ + upperDepth + 0.01],
+    p2: [0.60, upperMidY, facingWallZ + upperDepth + 0.01],
+    axis: 'x'
+  };
+  addBox(0.30, 0.025, upperDepth, matteBlackMat, leftDrawCenterX, upperBottomY + 0.012, facingWallZ + upperDepth / 2);
+  addBox(0.30, 0.025, upperDepth, matteBlackMat, leftDrawCenterX, upperBottomY + upperHeight - 0.012, facingWallZ + upperDepth / 2);
+  addBox(0.025, upperHeight, upperDepth, matteBlackMat, 0.30 + 0.012, upperMidY, facingWallZ + upperDepth / 2);
+  addBox(0.025, upperHeight, upperDepth, matteBlackMat, 0.60 - 0.012, upperMidY, facingWallZ + upperDepth / 2);
+  addBox(0.30, upperHeight, 0.015, matteBlackMat, leftDrawCenterX, upperMidY, facingWallZ + 0.008);
+  addBox(0.26, 0.020, upperDepth - 0.04, oakMat, leftDrawCenterX, upperBottomY + 0.42, facingWallZ + upperDepth / 2);
+
+  // Left Upper Cabinet Interactive Door
+  const leftCabHinge = new THREE.Group();
+  leftCabHinge.position.set(mx(0.30 + 0.01), upperMidY, facingWallZ + upperDepth);
+  kitchenGroup.add(leftCabHinge);
+  const leftCabDoor = new THREE.Mesh(new THREE.BoxGeometry(0.29, upperHeight - 0.02, 0.02), matteBlackMat);
+  leftCabDoor.position.set(isCarportLeft ? 0.145 : -0.145, 0, 0.01);
+  leftCabDoor.castShadow = true;
+  leftCabHinge.add(leftCabDoor);
+  const leftCabHandle = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.15, 0.018), stainlessMat);
+  leftCabHandle.position.set(isCarportLeft ? 0.26 : -0.26, -0.15, 0.022);
+  leftCabHinge.add(leftCabHandle);
+
+  const leftUpperCabController = {
+    id: "left_upper_cabinet",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playCabinet(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Close Left Cabinet" : "Open Left Upper Cabinet";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 8.0, delta);
+      leftCabHinge.rotation.y = this.progress * (isCarportLeft ? -1.40 : 1.40);
+    }
+  };
+  registerInteractable(leftCabDoor, leftUpperCabController);
+  registerInteractable(leftCabHandle, leftUpperCabController);
+
+  // 3B. Center Open Oak Dish Shelving Unit above Sink (800mm: X in [0.60, 1.40])
+  const shelfBoxDim = {
+    label: "Oak Dish Shelving (800 mm)",
+    p1: [0.60, upperMidY, facingWallZ + upperDepth / 2],
+    p2: [1.40, upperMidY, facingWallZ + upperDepth / 2],
+    axis: 'x'
+  };
+  addBox(0.80, 0.025, upperDepth, oakMat, sinkCenterX, upperBottomY + 0.012, facingWallZ + upperDepth / 2, 0, shelfBoxDim);
+  addBox(0.80, 0.025, upperDepth, oakMat, sinkCenterX, upperBottomY + upperHeight - 0.012, facingWallZ + upperDepth / 2, 0, shelfBoxDim);
+  addBox(0.80, 0.022, upperDepth - 0.04, oakMat, sinkCenterX, upperBottomY + 0.42, facingWallZ + upperDepth / 2);
+  addBox(0.025, upperHeight, upperDepth, oakMat, 0.60 + 0.012, upperMidY, facingWallZ + upperDepth / 2);
+  addBox(0.025, upperHeight, upperDepth, oakMat, 1.40 - 0.012, upperMidY, facingWallZ + upperDepth / 2);
+  addBox(0.80, upperHeight, 0.015, oakMat, sinkCenterX, upperMidY, facingWallZ + 0.008);
+
+  // Shelved Ceramic Dishes & Tableware in Oak Unit
+  const dishWhiteMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.25 });
+  for (let pi = 0; pi < 6; pi++) {
+    const dPlate = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.008, 24), dishWhiteMat);
+    dPlate.rotation.z = Math.PI / 2;
+    dPlate.position.set(mx(sinkCenterX - 0.22 + pi * 0.038), upperBottomY + 0.13, facingWallZ + upperDepth / 2);
+    kitchenGroup.add(dPlate);
+  }
+  for (let bi = 0; bi < 3; bi++) {
+    const bowl = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.045, 0.045, 16), dishWhiteMat);
+    bowl.position.set(mx(sinkCenterX + 0.14 + (bi - 1) * 0.11), upperBottomY + 0.42 + 0.035, facingWallZ + upperDepth / 2);
+    kitchenGroup.add(bowl);
+  }
+  // Under-shelf LED warm task light above sink
+  addBox(0.76, 0.008, 0.018, ledEmissiveMat, sinkCenterX, upperBottomY - 0.004, facingWallZ + upperDepth / 2 + 0.06);
+  const ledLightSink = new THREE.PointLight(0xffdfa8, 1.1, 2.8, 1.3);
+  ledLightSink.position.set(mx(sinkCenterX), upperBottomY - 0.06, facingWallZ + 0.22);
+  kitchenGroup.add(ledLightSink);
+
+  // 3C. Right Upper Cabinet above Prep Counter & Flundra Rack (500mm: X in [1.40, 1.90])
+  // RESTORED: Completely closes the missing gap between Oak unit and corner!
+  const rightUpperDim = {
+    label: "500 mm Upper Cabinet",
+    p1: [1.40, upperMidY, facingWallZ + upperDepth + 0.01],
+    p2: [1.90, upperMidY, facingWallZ + upperDepth + 0.01],
+    axis: 'x'
+  };
+  addBox(0.50, 0.025, upperDepth, matteBlackMat, 1.65, upperBottomY + 0.012, facingWallZ + upperDepth / 2, 0, rightUpperDim);
+  addBox(0.50, 0.025, upperDepth, matteBlackMat, 1.65, upperBottomY + upperHeight - 0.012, facingWallZ + upperDepth / 2, 0, rightUpperDim);
+  addBox(0.025, upperHeight, upperDepth, matteBlackMat, 1.40 + 0.012, upperMidY, facingWallZ + upperDepth / 2);
+  addBox(0.025, upperHeight, upperDepth, matteBlackMat, 1.90 - 0.012, upperMidY, facingWallZ + upperDepth / 2);
+  addBox(0.50, upperHeight, 0.015, matteBlackMat, 1.65, upperMidY, facingWallZ + 0.008);
+  addBox(0.46, 0.020, upperDepth - 0.04, oakMat, 1.65, upperBottomY + 0.42, facingWallZ + upperDepth / 2);
+
+  // Storage canisters inside right upper cabinet
+  const jarColors = [0xe2e8f0, 0xcbd5e1, 0x94a3b8];
+  jarColors.forEach((jc, ji) => {
+    const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.04, 0.12, 16), new THREE.MeshStandardMaterial({ color: jc, roughness: 0.3 }));
+    jar.position.set(mx(1.53 + ji * 0.11), upperBottomY + 0.42 + 0.07, facingWallZ + upperDepth / 2);
+    kitchenGroup.add(jar);
+    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.02, 16), oakMat);
+    lid.position.set(mx(1.53 + ji * 0.11), upperBottomY + 0.42 + 0.135, facingWallZ + upperDepth / 2);
+    kitchenGroup.add(lid);
+  });
+
+  // Right Upper Cabinet Interactive Door (swings open towards the corner)
+  const rightCabHinge = new THREE.Group();
+  rightCabHinge.position.set(mx(1.90 - 0.01), upperMidY, facingWallZ + upperDepth);
+  kitchenGroup.add(rightCabHinge);
+  const rightCabDoor = new THREE.Mesh(new THREE.BoxGeometry(0.49, upperHeight - 0.02, 0.02), matteBlackMat);
+  rightCabDoor.position.set(isCarportLeft ? -0.245 : 0.245, 0, 0.01);
+  rightCabDoor.castShadow = true;
+  rightCabHinge.add(rightCabDoor);
+  const rightCabHandle = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.15, 0.018), stainlessMat);
+  rightCabHandle.position.set(isCarportLeft ? -0.44 : 0.44, -0.15, 0.022);
+  rightCabHinge.add(rightCabHandle);
+
+  const rightUpperCabController = {
+    id: "right_upper_cabinet",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playCabinet(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Close Upper Cabinet" : "Open Upper Prep Cabinet";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 8.0, delta);
+      rightCabHinge.rotation.y = this.progress * (isCarportLeft ? 1.40 : -1.40);
+    }
+  };
+  registerInteractable(rightCabDoor, rightUpperCabController);
+  registerInteractable(rightCabHandle, rightUpperCabController);
+
+  // Under-cabinet LED task light illuminating Flundra dish rack
+  addBox(0.46, 0.008, 0.018, ledEmissiveMat, 1.65, upperBottomY - 0.004, facingWallZ + upperDepth / 2 + 0.06);
+  const ledLightPrep = new THREE.PointLight(0xffdfa8, 0.9, 2.5, 1.3);
+  ledLightPrep.position.set(mx(1.65), upperBottomY - 0.06, facingWallZ + 0.22);
+  kitchenGroup.add(ledLightPrep);
+
+// 3D. Architectural L-Corner Casework & Open Shelving (X in [1.90, 2.50], Z in [-1.15, -0.55])
+  // Features: Solid lower oak appliance shelf for microwave, mid plant shelf, upper shelf, and solid gables/backing.
+  const cornUpperDim = {
+    label: "Corner Appliance & Display Casework",
+    p1: [1.90, upperMidY, -0.85],
+    p2: [2.50, upperMidY, -0.85],
+    axis: 'x'
+  };
+  const cornCenterX = 2.20;
+  const cornCenterZ = -0.85;
+
+  // 1. Lower Oak Appliance Shelf (RESTORED at Y = 1.18m specifically for Microwave)
+  const mwShelfTopY = 1.18;
+  const mwShelfThick = 0.028;
+  const lowerShelfDim = {
+    label: "Lower Microwave Shelf (600 × 600 mm)",
+    p1: [1.90, mwShelfTopY, cornCenterZ],
+    p2: [2.50, mwShelfTopY, cornCenterZ],
+    axis: 'x'
+  };
+  addBox(0.58, mwShelfThick, 0.58, oakMat, cornCenterX, mwShelfTopY - mwShelfThick / 2, cornCenterZ, 0, lowerShelfDim);
+
+  // 2. Mid Oak Display Shelf (Y = 1.55m) - Directly above microwave
+  addBox(0.55, 0.025, 0.55, oakMat, cornCenterX + 0.02, 1.55, cornCenterZ - 0.02);
+
+  // 3. Upper Oak Display Shelf (Y = 1.95m)
+  addBox(0.55, 0.025, 0.55, oakMat, cornCenterX + 0.02, 1.95, cornCenterZ - 0.02);
+
+  // 4. Top Ceiling Capping Slab (Y = 2.35m)
+  addBox(0.60, 0.025, 0.60, matteBlackMat, cornCenterX, 2.35 - 0.012, cornCenterZ, 0, cornUpperDim);
+
+  // Solid left side gable (connecting flush to right upper cabinet at X = 1.90, spanning from lower shelf to ceiling)
+  const leftGableH = 2.35 - (mwShelfTopY - mwShelfThick);
+  const leftGableMidY = (mwShelfTopY - mwShelfThick + 2.35) / 2;
+  addBox(0.025, leftGableH, upperDepth, matteBlackMat, 1.90 + 0.012, leftGableMidY, facingWallZ + upperDepth / 2);
+
+  // Solid front side gable (connecting flush to long wall upper cabinet at Z = -0.55)
+  addBox(upperDepth, leftGableH, 0.025, matteBlackMat, longWallX - upperDepth / 2, leftGableMidY, -0.55 - 0.012);
+
+  // Solid finished back wall panels against walls
+  addBox(0.60, leftGableH, 0.018, oakMat, cornCenterX, leftGableMidY, facingWallZ + 0.009);
+  addBox(0.018, leftGableH, 0.60, oakMat, longWallX - 0.009, leftGableMidY, cornCenterZ);
+
+  // Trailing Ivy Plant in White Ceramic Pot on Mid Shelf (Y = 1.55m)
+  const potMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.06, 0.12, 20), new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.25 }));
+  potMesh.position.set(mx(cornCenterX + 0.04), 1.55 + 0.065 + 0.012, cornCenterZ - 0.02);
+  kitchenGroup.add(potMesh);
+  for (let li = 0; li < 7; li++) {
+    const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.032, 8, 8), plantLeafMat);
+    leaf.scale.set(0.6, 1.2, 0.3);
+    leaf.position.set(mx(cornCenterX - 0.04 + li * 0.025), 1.55 + 0.03 - li * 0.04, cornCenterZ + 0.10 + (li % 2) * 0.035);
+    kitchenGroup.add(leaf);
+  }
+
+  // Decorative ceramic jars on upper shelf (Y = 1.95m)
+  for (let ui = 0; ui < 2; ui++) {
+    const uVase = new THREE.Mesh(new THREE.CylinderGeometry(0.045, 0.055, 0.14, 16), new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.3 }));
+    uVase.position.set(mx(cornCenterX + 0.08 - ui * 0.12), 1.95 + 0.07 + 0.012, cornCenterZ - 0.04);
+    kitchenGroup.add(uVase);
+  }
+
+  // Warm accent ceiling spotlight in corner casework
+  const cornSpotLight = new THREE.PointLight(0xffdfa8, 0.9, 2.2, 1.4);
+  cornSpotLight.position.set(mx(cornCenterX), 2.35 - 0.06, cornCenterZ);
+  kitchenGroup.add(cornSpotLight);
+
+  // 3E. 20L MICROWAVE OVEN ELEVATED ON LOWER OAK SHELF (Y = 1.18m)
+  // Perfectly sized 20L microwave, elevated to clear counter space below, opening FORWARD into room!
+  const mwW = 0.455;
+  const mwH = 0.252;
+  const mwD = 0.320;
+  const mwPosX = 2.18;
+  const mwPosZ = -0.82;
+  const mwFeetH = 0.012;
+  const mwBodyY = mwShelfTopY + mwFeetH + mwH / 2; // 1.18 + 0.012 + 0.126 = 1.318m
+
+  const mwDim = {
+    label: "20L Microwave (455 × 252 mm)",
+    p1: [mwPosX - mwW / 2, mwShelfTopY + mwFeetH + mwH, mwPosZ],
+    p2: [mwPosX + mwW / 2, mwShelfTopY + mwFeetH + mwH, mwPosZ],
+    axis: 'x'
+  };
+
+  // 4 Non-slip rubber feet resting on the lower oak shelf
+  const rubberMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.8 });
+  [
+    [-mwW / 2 + 0.03, -mwD / 2 + 0.03],
+    [mwW / 2 - 0.03, -mwD / 2 + 0.03],
+    [-mwW / 2 + 0.03, mwD / 2 - 0.03],
+    [mwW / 2 - 0.03, mwD / 2 - 0.03]
+  ].forEach(([fx, fz]) => {
+    const foot = new THREE.Mesh(new THREE.CylinderGeometry(0.014, 0.014, mwFeetH, 12), rubberMat);
+    foot.position.set(mx(mwPosX + fx), mwShelfTopY + mwFeetH / 2, mwPosZ + fz);
+    kitchenGroup.add(foot);
+  });
+
+  // Outer Chassis & Interior Cavity
+  const mwChassis = addBox(mwW, mwH, mwD, matteBlackMat, mwPosX, mwBodyY, mwPosZ, 0, mwDim);
+  addBox(mwW - 0.06, mwH - 0.05, mwD - 0.06, new THREE.MeshStandardMaterial({ color: 0x22262a, roughness: 0.3 }), mwPosX - 0.02, mwBodyY, mwPosZ);
+
+  // Glass Turntable & Ceramic Mug inside microwave
+  const turnTable = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.008, 20), clearGlassMat);
+  turnTable.position.set(mx(mwPosX - 0.02), mwShelfTopY + mwFeetH + 0.025, mwPosZ);
+  kitchenGroup.add(turnTable);
+
+  const mugMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.035, 0.08, 16), new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 }));
+  mugMesh.position.set(mx(mwPosX - 0.02), mwShelfTopY + mwFeetH + 0.07, mwPosZ);
+  kitchenGroup.add(mugMesh);
+
+  // Microwave Interior Light
+  const mwLight = new THREE.PointLight(0xffe899, 0, 0.9);
+  mwLight.position.set(mx(mwPosX - 0.02), mwBodyY + 0.05, mwPosZ);
+  kitchenGroup.add(mwLight);
+
+  // Microwave Door Hinge Group on Left Edge
+  const mwDoorHinge = new THREE.Group();
+  mwDoorHinge.position.set(mx(mwPosX - mwW / 2 + 0.01), mwBodyY, mwPosZ + mwD / 2);
+  kitchenGroup.add(mwDoorHinge);
+
+  const mwDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(mwW - 0.10, mwH - 0.02, 0.015), smokedGlassMat);
+  mwDoorMesh.position.set(isCarportLeft ? (mwW - 0.10) / 2 : -(mwW - 0.10) / 2, 0, 0);
+  mwDoorHinge.add(mwDoorMesh);
+
+  const mwHandleMesh = new THREE.Mesh(new THREE.BoxGeometry(0.016, 0.15, 0.022), stainlessMat);
+  mwHandleMesh.position.set(isCarportLeft ? mwW - 0.12 : -(mwW - 0.12), 0, 0.012);
+  mwDoorHinge.add(mwHandleMesh);
+
+  const microwaveController = {
+    id: "microwave",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playMicrowave(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Close Microwave" : "Open Microwave Door";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 8.5, delta);
+      // Fixed: Negative angle swings door forward into room towards +Z (facing user), opening the interior wide!
+      const openAngle = isCarportLeft ? -1.45 : 1.45;
+      mwDoorHinge.rotation.y = this.progress * openAngle;
+      mwLight.intensity = this.progress * 1.2;
+    }
+  };
+
+  registerInteractable(mwDoorMesh, microwaveController);
+  registerInteractable(mwHandleMesh, microwaveController);
+  registerInteractable(mwChassis, microwaveController);
+
+  // =========================================================================
+  // 4. LONG WALL: COOKING & REFRIGERATOR ZONE (X = 2.50m: Z in [-0.55, 2.05])
+  // =========================================================================
+  const baseMidX = longWallX - counterDepth / 2; // 2.20m
+  const plinthMidX = longWallX - (counterDepth - 0.06) / 2; // 2.23m
+
+  // 4A. Food Prep Zone (Z in [-0.55, -0.05])
+  const prepLen = 0.50;
+  const prepCenterZ_long = (-0.55 - 0.05) / 2; // -0.30m
+  addBox(counterDepth - 0.02, cabHeight, prepLen, matteBlackMat, baseMidX, plinthHeight + cabHeight / 2, prepCenterZ_long);
+  addBox(counterDepth - 0.06, plinthHeight, prepLen, plinthMat, plinthMidX, plinthHeight / 2, prepCenterZ_long);
+  addBox(0.025, 0.035, prepLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, prepCenterZ_long);
+  addBox(counterDepth, slabThick, prepLen, marbleMat, baseMidX, counterTopY - slabThick / 2, prepCenterZ_long);
+
+  // Chef's Knife Block with Angled Stainless Knives
+  addBox(0.10, 0.22, 0.16, oakMat, longWallX - 0.16, counterTopY + 0.11, -0.44, 0.25);
+
+  // --- HIGH-POLY JAPANESE DIGITAL INDUCTION RICE COOKER ---
+  const rcGroup = new THREE.Group();
+  const rcPosX = longWallX - 0.28;
+  const rcPosZ = -0.22;
+  rcGroup.position.set(mx(rcPosX), counterTopY, rcPosZ);
+  kitchenGroup.add(rcGroup);
+
+  // Rounded Squircle Outer Body (Pearl Charcoal Metallic)
+  const rcBodyMat = new THREE.MeshStandardMaterial({
+    color: 0x1c1e22,
+    roughness: 0.25,
+    metalness: 0.35
+  });
+  const rcBody = new THREE.Mesh(new THREE.CylinderGeometry(0.125, 0.115, 0.14, 32), rcBodyMat);
+  rcBody.scale.set(1.0, 1.0, 1.15); // squircle proportions
+  rcBody.position.set(0, 0.07, 0);
+  rcBody.castShadow = true;
+  rcGroup.add(rcBody);
+
+  // Champagne Gold Accent Band around perimeter
+  const goldAccentMat = new THREE.MeshStandardMaterial({
+    color: 0xd4af37,
+    roughness: 0.22,
+    metalness: 0.88
+  });
+  const rcGoldBand = new THREE.Mesh(new THREE.CylinderGeometry(0.128, 0.128, 0.014, 32), goldAccentMat);
+  rcGoldBand.scale.set(1.0, 1.0, 1.15);
+  rcGoldBand.position.set(0, 0.14, 0);
+  rcGroup.add(rcGoldBand);
+
+  // Domed Curved Top Lid
+  const rcLid = new THREE.Mesh(new THREE.CylinderGeometry(0.124, 0.127, 0.035, 32), rcBodyMat);
+  rcLid.scale.set(1.0, 1.0, 1.15);
+  rcLid.position.set(0, 0.16, 0);
+  rcGroup.add(rcLid);
+
+  // Oval Steam Vent Cap on Top
+  const ventCap = new THREE.Mesh(new THREE.CylinderGeometry(0.024, 0.024, 0.008, 16), new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3 }));
+  ventCap.position.set(0, 0.18, 0.03);
+  rcGroup.add(ventCap);
+
+  // Slanted Front Control Panel with Backlit LCD Screen
+  const rcPanel = new THREE.Mesh(new THREE.BoxGeometry(0.015, 0.06, 0.11), new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.1 }));
+  rcPanel.position.set(isCarportLeft ? -0.122 : 0.122, 0.08, 0);
+  rcPanel.rotation.z = isCarportLeft ? 0.22 : -0.22;
+  rcGroup.add(rcPanel);
+
+  // Glowing Amber/Cyan Display
+  const rcDisplay = new THREE.Mesh(new THREE.BoxGeometry(0.004, 0.022, 0.055), new THREE.MeshBasicMaterial({ color: 0x38bdf8 }));
+  rcDisplay.position.set(isCarportLeft ? -0.128 : 0.128, 0.09, 0);
+  rcDisplay.rotation.z = isCarportLeft ? 0.22 : -0.22;
+  rcGroup.add(rcDisplay);
+
+  // Curved Carrying Handle Arch
+  const rcHandle = new THREE.Mesh(new THREE.TorusGeometry(0.12, 0.007, 10, 24, Math.PI), goldAccentMat);
+  rcHandle.rotation.x = Math.PI / 2;
+  rcHandle.position.set(0, 0.14, 0);
+  rcGroup.add(rcHandle);
+
+  // 4B. Cooking Station: Modena BH 2725 GBBK & Cookware Drawer (900mm: Z in [-0.05, 0.85])
+  const cookLen = 0.90;
+  const cookCenterZ = (-0.05 + 0.85) / 2; // 0.40m
+  const hobLen = 0.73;
+  const hobWidth = 0.42;
+  const hobCenterX = longWallX - counterDepth / 2; // 2.20m
+
+  const cookingDim = {
+    label: "Modena BH 2725 GBBK (730 × 420 mm)",
+    p1: [longWallX - counterDepth - 0.02, 0.93, cookCenterZ - hobLen / 2],
+    p2: [longWallX - counterDepth - 0.02, 0.93, cookCenterZ + hobLen / 2],
     axis: 'z'
   };
 
-  const oakThick = 0.02;
-  // Oak Carcass (Left, Right, Top, Bottom, Back)
-  addBox(oakUnitDepth, upperHeight, oakThick, oakMat, oakUnitCenterX, upperMidY, oakUnitCenterZ - oakUnitLen / 2 + oakThick / 2, 0, oakDim);
-  addBox(oakUnitDepth, upperHeight, oakThick, oakMat, oakUnitCenterX, upperMidY, oakUnitCenterZ + oakUnitLen / 2 - oakThick / 2, 0, oakDim);
-  addBox(oakUnitDepth, oakThick, oakUnitLen, oakMat, oakUnitCenterX, upperBottomY + upperHeight - oakThick / 2, oakUnitCenterZ, 0, oakDim);
-  addBox(oakUnitDepth, oakThick, oakUnitLen, oakMat, oakUnitCenterX, upperBottomY + oakThick / 2, oakUnitCenterZ, 0, oakDim);
-  addBox(0.015, upperHeight - 0.04, oakUnitLen - 0.04, oakMat, longWallX - 0.008, upperMidY, oakUnitCenterZ);
+  addBox(counterDepth - 0.06, plinthHeight, cookLen, plinthMat, plinthMidX, plinthHeight / 2, cookCenterZ);
+  addBox(counterDepth, slabThick, cookLen, marbleMat, baseMidX, counterTopY - slabThick / 2, cookCenterZ);
 
-  // Vertical Center Oak Divider
-  const oakDivZ = oakUnitCenterZ - 0.04;
-  addBox(oakUnitDepth - 0.02, upperHeight - 0.04, oakThick, oakMat, oakUnitCenterX - 0.01, upperMidY, oakDivZ);
+  // Built-in Oven
+  const ovenW = 0.60;
+  const ovenH = 0.60;
+  const ovenY = plinthHeight + ovenH / 2 + 0.02;
+  addBox(counterDepth - 0.02, ovenH, ovenW, matteBlackMat, baseMidX, ovenY, cookCenterZ);
+  addBox(0.015, ovenH - 0.12, ovenW - 0.08, smokedGlassMat, longWallX - counterDepth - 0.005, ovenY - 0.03, cookCenterZ, 0, cookingDim);
+  addBox(0.02, 0.022, ovenW - 0.12, stainlessMat, longWallX - counterDepth - 0.032, ovenY + 0.18, cookCenterZ, 0, cookingDim);
 
-  // Left Column of Oak Unit (Z in [0.33, 0.70], Width ~0.37m) - Slotted Plate Drying Rack
-  const oakL1ColZ = (0.33 + oakDivZ) / 2;
-  const oakL1ColLen = oakDivZ - 0.33;
-  addBox(oakUnitDepth - 0.02, oakThick, oakL1ColLen, oakMat, oakUnitCenterX - 0.01, upperBottomY + 0.36, oakL1ColZ);
-  addBox(oakUnitDepth - 0.02, oakThick, oakL1ColLen, oakMat, oakUnitCenterX - 0.01, upperBottomY + 0.58, oakL1ColZ);
-  // Standing ceramic plates in slotted plate rack
-  for (let pi = 0; pi < 5; pi++) {
-    const pX = longWallX - 0.26 + pi * 0.038;
-    const plate = new THREE.Mesh(new THREE.CylinderGeometry(0.105, 0.105, 0.008, 24), ceramicWhiteMat);
-    plate.rotation.z = Math.PI / 2;
-    plate.position.set(mx(pX), upperBottomY + oakThick + 0.12, oakL1ColZ);
-    plate.castShadow = true;
-    kitchenGroup.add(plate);
+  // --- INTERACTIVE COOKWARE DRAWER UNDER OVEN ---
+  const drawerSlideGroup = new THREE.Group();
+  drawerSlideGroup.position.set(0, 0, 0);
+  kitchenGroup.add(drawerSlideGroup);
+
+  const drawerFront = new THREE.Mesh(new THREE.BoxGeometry(0.022, 0.12, ovenW), matteBlackMat);
+  drawerFront.position.set(mx(longWallX - counterDepth - 0.01), plinthHeight / 2 + 0.04, cookCenterZ);
+  drawerFront.castShadow = true;
+  drawerSlideGroup.add(drawerFront);
+
+  // Stainless Steel Cookware inside drawer
+  const panBody = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.10, 0.05, 20), stainlessMat);
+  panBody.position.set(mx(longWallX - counterDepth + 0.18), plinthHeight / 2 + 0.04, cookCenterZ);
+  drawerSlideGroup.add(panBody);
+  const panHandle = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.01, 0.18, 12), matteBlackMat);
+  panHandle.rotation.x = Math.PI / 2;
+  panHandle.position.set(mx(longWallX - counterDepth + 0.18), plinthHeight / 2 + 0.05, cookCenterZ + 0.16);
+  drawerSlideGroup.add(panHandle);
+
+  const cookwareDrawerController = {
+    id: "cook_drawer",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playCabinet(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Close Cookware Drawer" : "Open Cookware Drawer";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 8.0, delta);
+      drawerSlideGroup.position.x = mx(this.progress * (isCarportLeft ? -0.36 : 0.36));
+    }
+  };
+
+  registerInteractable(drawerFront, cookwareDrawerController);
+
+  // Modena BH 2725 GBBK Gas Hob Glass Plate
+  const hobGlass = addBox(hobWidth, 0.008, hobLen, gasHobGlassMat, hobCenterX, counterTopY + 0.004, cookCenterZ, 0, cookingDim);
+
+  // Modena silver brand badge
+  const modenaBadge = new THREE.Mesh(new THREE.BoxGeometry(0.012, 0.002, 0.065), stainlessMat);
+  modenaBadge.position.set(mx(hobCenterX - hobWidth / 2 + 0.015), counterTopY + 0.009, cookCenterZ);
+  kitchenGroup.add(modenaBadge);
+
+  // Dual Double-Ring Brass Gas Burners & Cast Iron Trivets
+  const activeBurnerZ = cookCenterZ - 0.19; // Left burner is interactive
+  const rightBurnerZ = cookCenterZ + 0.19;
+
+  [activeBurnerZ, rightBurnerZ].forEach(curBZ => {
+    const alumBody = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.062, 0.022, 24), stainlessMat);
+    alumBody.position.set(mx(hobCenterX), counterTopY + 0.015, curBZ);
+    kitchenGroup.add(alumBody);
+
+    const brassCrown = new THREE.Mesh(new THREE.CylinderGeometry(0.058, 0.058, 0.008, 24), brassBurnerMat);
+    brassCrown.position.set(mx(hobCenterX), counterTopY + 0.026, curBZ);
+    kitchenGroup.add(brassCrown);
+
+    const bCap = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.008, 24), matteBlackMat);
+    bCap.position.set(mx(hobCenterX), counterTopY + 0.032, curBZ);
+    kitchenGroup.add(bCap);
+
+    // Cast iron pan support grid
+    const gridSpan = 0.21;
+    addBox(gridSpan, 0.016, 0.016, castIronMat, hobCenterX, counterTopY + 0.040, curBZ - gridSpan / 2 + 0.008);
+    addBox(gridSpan, 0.016, 0.016, castIronMat, hobCenterX, counterTopY + 0.040, curBZ + gridSpan / 2 - 0.008);
+    addBox(0.016, 0.016, gridSpan, castIronMat, hobCenterX - gridSpan / 2 + 0.008, counterTopY + 0.040, curBZ);
+    addBox(0.016, 0.016, gridSpan, castIronMat, hobCenterX + gridSpan / 2 - 0.008, counterTopY + 0.040, curBZ);
+  });
+
+  // --- INTERACTIVE GAS FLAME & BURNER CONTROLLER ---
+  const flameGroup = new THREE.Group();
+  flameGroup.position.set(mx(hobCenterX), counterTopY + 0.036, activeBurnerZ);
+  flameGroup.visible = false;
+  kitchenGroup.add(flameGroup);
+
+  // Outer ring of 16 blue gas flame jets
+  for (let fi = 0; fi < 16; fi++) {
+    const ang = (fi / 16) * Math.PI * 2;
+    const jet = new THREE.Mesh(new THREE.ConeGeometry(0.007, 0.024, 8), blueFlameMat);
+    jet.rotation.x = Math.PI / 2;
+    jet.position.set(Math.cos(ang) * 0.056, 0.008, Math.sin(ang) * 0.056);
+    flameGroup.add(jet);
   }
-  // Upper bowls
-  const midDish1 = new THREE.Mesh(new THREE.CylinderGeometry(0.065, 0.045, 0.05, 16), ceramicWhiteMat);
-  midDish1.position.set(mx(longWallX - 0.18), upperBottomY + 0.36 + 0.03, oakL1ColZ);
-  kitchenGroup.add(midDish1);
+  // Inner ring of blue flame
+  const innerRingMesh = new THREE.Mesh(new THREE.TorusGeometry(0.030, 0.006, 8, 20), innerFlameMat);
+  innerRingMesh.rotation.x = Math.PI / 2;
+  flameGroup.add(innerRingMesh);
 
-  // Right Column of Oak Unit (Z in [0.72, 1.17], Width ~0.45m) - Microwave Niche & Mugs
-  const oakRColZ = (oakDivZ + 1.17) / 2;
-  const oakRColLen = 1.17 - oakDivZ;
-  addBox(oakUnitDepth - 0.02, oakThick, oakRColLen, oakMat, oakUnitCenterX - 0.01, upperBottomY + 0.36, oakRColZ);
-  addBox(oakUnitDepth - 0.02, oakThick, oakRColLen, oakMat, oakUnitCenterX - 0.01, upperBottomY + 0.58, oakRColZ);
+  // Dynamic Blue Flame Point Light
+  const flameLight = new THREE.PointLight(0x00d4ff, 0, 1.6, 1.5);
+  flameLight.position.set(mx(hobCenterX), counterTopY + 0.12, activeBurnerZ);
+  kitchenGroup.add(flameLight);
 
-  // Microwave Oven in lower niche of right column
-  const mBoxW = 0.42;
-  const mBoxH = 0.28;
-  const mBoxD = 0.30;
-  const mBoxY = upperBottomY + oakThick + mBoxH / 2 + 0.01;
-  addBox(mBoxD, mBoxH, mBoxW, matteBlackMat, longWallX - 0.04 - mBoxD / 2, mBoxY, oakRColZ, 0, oakDim);
-  addBox(0.008, mBoxH - 0.04, mBoxW * 0.70, smokedGlassMat, longWallX - 0.04 - mBoxD - 0.004, mBoxY, oakRColZ - 0.05, 0, oakDim);
-  addBox(0.014, mBoxH * 0.65, 0.014, matteBlackMat, longWallX - 0.04 - mBoxD - 0.015, mBoxY, oakRColZ + 0.07);
-  addBox(0.006, mBoxH - 0.04, 0.08, matteBlackMat, longWallX - 0.04 - mBoxD - 0.004, mBoxY, oakRColZ + 0.15);
-  addBox(0.004, 0.025, 0.05, new THREE.MeshBasicMaterial({ color: 0x00ffcc }), longWallX - 0.04 - mBoxD - 0.008, mBoxY + 0.07, oakRColZ + 0.15);
+  // Knurled Modena Metallic Control Knobs
+  const knobHinge = new THREE.Group();
+  knobHinge.position.set(mx(hobCenterX - 0.15), counterTopY + 0.022, cookCenterZ - 0.045);
+  kitchenGroup.add(knobHinge);
+  const knobDial = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.016, 16), matteBlackMat);
+  knobHinge.add(knobDial);
 
-  // Middle Shelf: Glass storage jars with cork lids & coffee mugs
-  [-0.08, 0.02].forEach(jz => {
-    const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.038, 0.038, 0.11, 16), clearGlassJarMat);
-    jar.position.set(mx(longWallX - 0.18), upperBottomY + 0.36 + 0.06, oakRColZ + jz);
-    kitchenGroup.add(jar);
-    const lid = new THREE.Mesh(new THREE.CylinderGeometry(0.036, 0.040, 0.025, 16), corkMat);
-    lid.position.set(mx(longWallX - 0.18), upperBottomY + 0.36 + 0.125, oakRColZ + jz);
-    kitchenGroup.add(lid);
-  });
-  const mug1 = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.030, 0.085, 16), ceramicWhiteMat);
-  mug1.position.set(mx(longWallX - 0.18), upperBottomY + 0.36 + 0.045, oakRColZ + 0.12);
-  kitchenGroup.add(mug1);
+  const knob2 = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.016, 16), matteBlackMat);
+  knob2.position.set(mx(hobCenterX - 0.15), counterTopY + 0.022, cookCenterZ + 0.045);
+  kitchenGroup.add(knob2);
 
-  // Under-Shelf LED Strip Light & Utensil Hanging Rail
-  addBox(0.018, 0.008, oakUnitLen - 0.04, ledEmissiveMat, longWallX - oakUnitDepth / 2 + 0.06, upperBottomY - 0.004, oakUnitCenterZ);
-  const ledLightOak = new THREE.PointLight(0xffdfa8, 1.1, 2.8, 1.3);
-  ledLightOak.position.set(mx(longWallX - 0.22), upperBottomY - 0.06, oakUnitCenterZ);
-  kitchenGroup.add(ledLightOak);
+  const burnerController = {
+    id: "stove_burner",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playBurner(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Turn Off Stove Flame" : "Turn On Modena Gas Burner";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 10, delta);
+      knobHinge.rotation.y = this.progress * 1.57;
+      flameGroup.visible = this.progress > 0.05;
+      const flicker = 0.92 + Math.sin(Date.now() * 0.03) * 0.09;
+      flameGroup.scale.set(this.progress, this.progress * flicker, this.progress);
+      flameLight.intensity = this.progress * (1.3 + Math.sin(Date.now() * 0.02) * 0.25);
+    }
+  };
 
-  const railY = upperBottomY - 0.15;
-  const railX = longWallX - 0.04;
-  const railW = oakUnitLen - 0.10;
-  const railBar = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, railW, 16), stainlessMat);
-  railBar.position.set(mx(railX), railY, oakUnitCenterZ);
-  kitchenGroup.add(railBar);
+  registerInteractable(knobDial, burnerController);
+  registerInteractable(hobGlass, burnerController);
 
-  [-0.24, -0.08, 0.08, 0.24].forEach(hz => {
-    const sHook = new THREE.Mesh(new THREE.TorusGeometry(0.012, 0.0025, 8, 16, Math.PI * 1.5), stainlessMat);
-    sHook.position.set(mx(railX), railY - 0.018, oakUnitCenterZ + hz);
-    kitchenGroup.add(sHook);
+  // Cooker Hood (Exact: 700 x 480 x 100 mm)
+  const hoodL = 0.70;
+  const hoodW = 0.48;
+  const hoodH = 0.10;
+  const hoodY = upperBottomY - hoodH / 2; // 1.50m
+  const hoodCenterX = longWallX - hoodW / 2;
+  const hoodDim = {
+    label: "Cooker Hood (700 × 480 × 100 mm)",
+    p1: [longWallX - hoodW, upperBottomY, cookCenterZ - hoodL / 2],
+    p2: [longWallX - hoodW, upperBottomY, cookCenterZ + hoodL / 2],
+    axis: 'z'
+  };
+  addBox(hoodW, hoodH, hoodL, matteBlackMat, hoodCenterX, hoodY, cookCenterZ, 0, hoodDim);
+  addBox(0.008, 0.020, hoodL, stainlessMat, longWallX - hoodW - 0.004, hoodY, cookCenterZ);
 
-    const hMug = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.028, 0.075, 16), ceramicWhiteMat);
-    hMug.position.set(mx(railX - 0.015), railY - 0.075, oakUnitCenterZ + hz);
-    kitchenGroup.add(hMug);
-  });
+  // 4C. Right Buffer Prep Counter (400mm: Z in [0.85, 1.25])
+  const bufLen = 0.40;
+  const bufCenterZ = (0.85 + 1.25) / 2; // 1.05m
+  addBox(counterDepth - 0.02, cabHeight, bufLen, matteBlackMat, baseMidX, plinthHeight + cabHeight / 2, bufCenterZ);
+  addBox(counterDepth - 0.06, plinthHeight, bufLen, plinthMat, plinthMidX, plinthHeight / 2, bufCenterZ);
+  addBox(0.025, 0.035, bufLen, recessedGrooveMat, longWallX - counterDepth, counterBaseY - 0.02, bufCenterZ);
+  addBox(counterDepth, slabThick, bufLen, marbleMat, baseMidX, counterTopY - slabThick / 2, bufCenterZ);
 
+  // Backsplash & Upper Cabinets on Long Wall
+  const lBacksplashLen = 2.40;
+  const lBacksplashMidZ = (-1.15 + 1.25) / 2; // 0.05m
+  const lBacksplashMat = create10cmBeigeCeramicMat(lBacksplashLen, backsplashH);
+  addBox(0.020, backsplashH, lBacksplashLen, lBacksplashMat, longWallX - 0.010, backsplashMidY, lBacksplashMidZ);
 
-  // --- 2E. TALL REFRIGERATOR ENCLOSURE (800mm) & 1-DOOR FRIDGE (700mm) (Z in [1.25, 2.05]) ---
-  // Requested: "dont leave space between frige and the cabinet , need to make sure that the cabinet itself has its own mesurement surely the frige + the cabinet can be moretahn 700mm"
-  // Total Cabinet Housing Width = 800 mm (Z in [1.25, 2.05], completely flush against counter at Z = 1.25 with ZERO gap!)
-  // Refrigerator Appliance Width = 700 mm (Z in [1.29, 1.99])
-  const tallCabW = 0.80; // 800 mm tall cabinet housing
+  // Upper Cabinets flanking Hood
+  const upperMidX_long = longWallX - upperDepth / 2;
+  addBox(upperDepth, upperHeight, 0.60, matteBlackMat, upperMidX_long, upperMidY, -0.25);
+  addBox(upperDepth, upperHeight, 0.50, matteBlackMat, upperMidX_long, upperMidY, 1.00);
+
+  // Task downlight
+  const ledLightLong1 = new THREE.PointLight(0xffdfa8, 1.1, 3.0, 1.3);
+  ledLightLong1.position.set(mx(longWallX - 0.22), upperBottomY - 0.06, cookCenterZ);
+  kitchenGroup.add(ledLightLong1);
+
+  // =========================================================================
+  // 5. TALL REFRIGERATOR ENCLOSURE & INTERACTIVE REFRIGERATOR (Z in [1.25, 2.05])
+  // =========================================================================
+  const tallCabW = 0.80;
   const tallCabCenterZ = (1.25 + 2.05) / 2; // 1.65m
   const fridgeDepth = 0.68;
   const fridgeCenterX = longWallX - fridgeDepth / 2; // 2.16m
   const fridgeBodyH = 1.82;
-  const topFridgeBoxH = tallCabinetH - fridgeBodyH; // 0.53m
+  const fridgeW = 0.70;
+  const fridgeFrontX = longWallX - fridgeDepth + 0.02;
 
-  // Distinct measurement for the Tall Cabinet Housing Unit (800 mm)
   const cabinetDim = {
-    label: "800 mm",
+    label: "800 mm Tall Cabinet",
     p1: [longWallX - fridgeDepth - 0.02, 2.10, 1.25],
     p2: [longWallX - fridgeDepth - 0.02, 2.10, 2.05],
     axis: 'z'
   };
 
-  // Distinct measurement for the Refrigerator Appliance (700 mm)
   const fridgeDim = {
-    label: "700 mm",
+    label: "700 mm Refrigerator",
     p1: [longWallX - fridgeDepth - 0.035, 1.20, 1.29],
     p2: [longWallX - fridgeDepth - 0.035, 1.20, 1.99],
     axis: 'z'
   };
 
-  // Outer cabinet side gables:
-  // Side gable at Z = 1.25m sits DIRECTLY FLUSH against the base cabinet and marble countertop (ZERO gap!)
   const gableThick = 0.02;
+  // Exterior Housing Enclosure (Cabinet framing)
   addBox(fridgeDepth, tallCabinetH, gableThick, brushedFridgeMat, fridgeCenterX, tallCabinetH / 2, 1.25 + gableThick / 2, 0, cabinetDim);
-  addBox(fridgeDepth, tallCabinetH, gableThick, matteBlackMat, fridgeCenterX, tallCabinetH / 2, 2.05 - gableThick / 2, 0, cabinetDim);
-  // Brushed stainless edge trim on exposed front edge of side gable
-  addBox(0.015, tallCabinetH, 0.024, stainlessMat, longWallX - fridgeDepth - 0.005, tallCabinetH / 2, 1.25 + gableThick / 2);
+  addBox(fridgeDepth, tallCabinetH, gableThick, brushedFridgeMat, fridgeCenterX, tallCabinetH / 2, 2.05 - gableThick / 2, 0, cabinetDim);
+  addBox(fridgeDepth, gableThick, tallCabW, brushedFridgeMat, fridgeCenterX, tallCabinetH - gableThick / 2, tallCabCenterZ, 0, cabinetDim);
+  addBox(fridgeDepth, 0.50, tallCabW - gableThick * 2, brushedFridgeMat, fridgeCenterX, fridgeBodyH + 0.27, tallCabCenterZ, 0, cabinetDim);
 
-  // Upper top bridge cabinet box above refrigerator (Y: 1.82m to 2.35m, spans full 800mm cabinet width)
-  const topCabInnerW = tallCabW - gableThick * 2; // ~0.76m
-  addBox(fridgeDepth, topFridgeBoxH, topCabInnerW, matteBlackMat, fridgeCenterX, fridgeBodyH + topFridgeBoxH / 2, tallCabCenterZ, 0, cabinetDim);
-  addBox(fridgeDepth - 0.02, 0.015, topCabInnerW, matteBlackMat, fridgeCenterX, fridgeBodyH, tallCabCenterZ);
-  addBox(0.005, topFridgeBoxH - 0.04, 0.004, recessedGrooveMat, longWallX - fridgeDepth - 0.002, fridgeBodyH + topFridgeBoxH / 2, tallCabCenterZ);
+  // --- REFRIGERATOR INTERIOR CAVITY & SHELVES ---
+  const fCavW = fridgeW - 0.08; // ~0.62m
+  const fCavD = fridgeDepth - 0.12;
+  const fCavH = fridgeBodyH - 0.08;
+  const fCavX = fridgeCenterX + 0.05;
 
-  // 700mm Refrigerator Appliance (Z in [1.29, 1.99], Width = 0.70m)
-  const fridgeW = 0.70; // 700 mm appliance width
-  const fridgeCenterZ = (1.29 + 1.99) / 2; // 1.64m
-  const fInnerW = fridgeW - 0.04; // 0.66m
-  const fInnerD = fridgeDepth - 0.04; // 0.64m
+  // White Glossy Insulated Interior Walls
+  addBox(fCavD, fCavH, fCavW, fridgeInteriorMat, fCavX, fridgeBodyH / 2, tallCabCenterZ);
 
-  // Refrigerator cabinet body shell
-  addBox(fInnerD, fridgeBodyH, fInnerW, brushedFridgeMat, fridgeCenterX + 0.01, fridgeBodyH / 2, fridgeCenterZ, 0, fridgeDim);
-
-  // SINGLE CONTINUOUS 1-DOOR FRONT (700mm wide, perfectly 1 door!)
-  const fDoorThick = 0.04;
-  addBox(fDoorThick, fridgeBodyH - 0.02, fInnerW, brushedFridgeMat, longWallX - fridgeDepth + fDoorThick / 2, fridgeBodyH / 2, fridgeCenterZ, 0, fridgeDim);
-
-  // Full-Length Vertical Brushed Stainless Steel Handle Bar (H = 1.30m on opening edge)
-  const handleBarH = 1.30;
-  const handleBar = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, handleBarH, 16), stainlessMat);
-  handleBar.position.set(mx(longWallX - fridgeDepth - 0.035), fridgeBodyH / 2, 1.29 + 0.08);
-  kitchenGroup.add(handleBar);
-  // Handle standoff mounts (top and bottom)
-  [-handleBarH / 2 + 0.04, handleBarH / 2 - 0.04].forEach(hy => {
-    const standoff = new THREE.Mesh(new THREE.CylinderGeometry(0.010, 0.010, 0.035, 12), stainlessMat);
-    standoff.rotation.z = Math.PI / 2;
-    standoff.position.set(mx(longWallX - fridgeDepth - 0.018), fridgeBodyH / 2 + hy, 1.29 + 0.08);
-    kitchenGroup.add(standoff);
+  // 3 Tempered Glass Shelves with Edge Light
+  [0.55, 0.95, 1.35].forEach(sy => {
+    addBox(fCavD - 0.04, 0.010, fCavW - 0.02, clearGlassMat, fCavX, sy, tallCabCenterZ);
   });
 
-  // Digital LED Temperature Touch Display Panel at eye level (Y = 1.45m)
-  addBox(0.005, 0.08, 0.18, new THREE.MeshPhysicalMaterial({ color: 0x111316, roughness: 0.05 }), longWallX - fridgeDepth - 0.004, 1.45, fridgeCenterZ);
-  addBox(0.002, 0.03, 0.10, new THREE.MeshBasicMaterial({ color: 0x00f0ff }), longWallX - fridgeDepth - 0.008, 1.45, fridgeCenterZ);
+  // Food & Beverages inside fridge:
+  // Top Shelf: Milk Carton & 1L Orange Juice Bottle
+  addBox(0.08, 0.18, 0.08, new THREE.MeshStandardMaterial({ color: 0x38bdf8, roughness: 0.3 }), fCavX + 0.05, 1.35 + 0.09, tallCabCenterZ - 0.14);
+  const juiceMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.042, 0.042, 0.20, 16), new THREE.MeshPhysicalMaterial({ color: 0xf97316, transmission: 0.85, roughness: 0.1 }));
+  juiceMesh.position.set(mx(fCavX + 0.05), 1.35 + 0.10, tallCabCenterZ + 0.14);
+  kitchenGroup.add(juiceMesh);
 
-  // Wall-side Filler Scribe Trim between fridge and rear wall (Z in [1.99, 2.05])
-  const fillerW = 2.05 - 1.99; // 0.06m
-  addBox(fridgeDepth - 0.02, fridgeBodyH, fillerW, matteBlackMat, fridgeCenterX, fridgeBodyH / 2, 1.99 + fillerW / 2);
+  // Middle Shelf: 3 Soda Cans & Fresh Salad Bowl
+  const canColors = [0xef4444, 0x3b82f6, 0x10b981];
+  canColors.forEach((cc, ci) => {
+    const can = new THREE.Mesh(new THREE.CylinderGeometry(0.032, 0.032, 0.11, 16), new THREE.MeshStandardMaterial({ color: cc, metalness: 0.85, roughness: 0.2 }));
+    can.position.set(mx(fCavX + 0.06), 0.95 + 0.055, tallCabCenterZ - 0.16 + ci * 0.075);
+    kitchenGroup.add(can);
+  });
 
+  // Bottom Crisper Drawer
+  addBox(fCavD - 0.06, 0.28, fCavW - 0.04, new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.75, roughness: 0.3 }), fCavX, 0.14 + 0.14, tallCabCenterZ);
 
-  // --- 2F. BACKSPLASH & UPPER CABINETS ON LONG WALL ---
-  const lBacksplashLen = 1.25 - rearWallInnerZ; // 1.25 - (-1.09) = 2.34m
-  const lBacksplashMidZ = (rearWallInnerZ + 1.25) / 2; // 0.08m
-  const lBacksplashMat = create10cmBeigeCeramicMat(lBacksplashLen, backsplashH);
-  // Mount 10cm x 10cm handcrafted beige ceramic tiles directly on visible wall surface
-  addBox(0.020, backsplashH, lBacksplashLen, lBacksplashMat, sideWallInnerX - 0.010, backsplashMidY, lBacksplashMidZ);
-  // Marble bottom curb strip (matching reference photo)
-  addBox(0.024, 0.04, lBacksplashLen, marbleMat, sideWallInnerX - 0.012, counterTopY + 0.02, lBacksplashMidZ);
+  // Glowing Cool White Interior LED Light
+  const fridgeInteriorLight = new THREE.PointLight(0xe0f2fe, 0, 2.2, 1.2);
+  fridgeInteriorLight.position.set(mx(fCavX - 0.10), fridgeBodyH - 0.25, tallCabCenterZ);
+  kitchenGroup.add(fridgeInteriorLight);
 
-  // Flanking Upper Cabinets on Long Wall (Corner to Oak unit, and Oak unit flush to Tall Fridge Cabinet)
-  // Left upper section (Z in [-0.55, 0.32], Length = 0.87m)
-  const lUpper1Len = 0.87;
-  const lUpper1MidZ = (-0.55 + 0.32) / 2; // -0.115m
-  const upperMidX_long = longWallX - upperDepth / 2;
-  addBox(upperDepth, upperHeight, lUpper1Len, matteBlackMat, upperMidX_long, upperMidY, lUpper1MidZ);
-  addBox(0.02, 0.02, lUpper1Len, recessedGrooveMat, upperMidX_long - upperDepth / 2 + 0.01, upperBottomY + 0.01, lUpper1MidZ);
-  addBox(0.018, 0.008, lUpper1Len - 0.04, ledEmissiveMat, upperMidX_long - upperDepth / 2 + 0.08, upperBottomY - 0.004, lUpper1MidZ);
+  // --- REFRIGERATOR DOOR HINGE (HINGED AT REAR WALL SIDE, SWINGING WIDE TOWARDS WORKSPACE) ---
+  // The hinge is placed at Z = 2.01m (against the end panel).
+  // The door extends from Z = 2.01m towards Z = 1.33m.
+  // The handle is placed at the front Z = 1.33m (closest to the cook!).
+  const fDoorLen = fridgeW - 0.02; // 0.68m
+  const fHingeZ = 2.05 - gableThick - 0.01; // 2.02m
 
-  // Right upper transition section (Z in [1.18, 1.25], Length = 0.07m flush against tall cabinet gable)
-  const lUpper2Len = 1.25 - 1.18; // 0.07m
-  const lUpper2MidZ = (1.18 + 1.25) / 2;
-  addBox(upperDepth, upperHeight, lUpper2Len, matteBlackMat, upperMidX_long, upperMidY, lUpper2MidZ);
+  const fridgeDoorHinge = new THREE.Group();
+  fridgeDoorHinge.position.set(mx(fridgeFrontX), fridgeBodyH / 2, fHingeZ);
+  kitchenGroup.add(fridgeDoorHinge);
 
-  // Task downlights on Long Wall
-  const ledLightLong1 = new THREE.PointLight(0xffdfa8, 1.1, 3.0, 1.3);
-  ledLightLong1.position.set(mx(longWallX - 0.22), upperBottomY - 0.06, -0.10);
-  kitchenGroup.add(ledLightLong1);
+  // In local space of fridgeDoorHinge:
+  // Hinge is at (0, 0, 0).
+  // The door extends along -Z by 0.68m.
+  // Its center is at local Z = -0.34m, X = 0.
+  const fridgeDoorMesh = new THREE.Mesh(new THREE.BoxGeometry(0.045, fridgeBodyH, fDoorLen), brushedFridgeMat);
+  fridgeDoorMesh.position.set(0, 0, -fDoorLen / 2);
+  fridgeDoorMesh.castShadow = true;
+  fridgeDoorHinge.add(fridgeDoorMesh);
 
+  // Vertical Stainless Steel Handle near front edge (local Z = -0.62m, closest to the cook)
+  const fridgeHandleMesh = new THREE.Mesh(new THREE.BoxGeometry(0.024, 1.10, 0.025), stainlessMat);
+  fridgeHandleMesh.position.set(isCarportLeft ? -0.038 : 0.038, -0.04, -fDoorLen + 0.06);
+  fridgeDoorHinge.add(fridgeHandleMesh);
+
+  // Eye-level Digital LED Display
+  const ledDisplayMesh = new THREE.Mesh(new THREE.BoxGeometry(0.005, 0.065, 0.16), matteBlackMat);
+  ledDisplayMesh.position.set(isCarportLeft ? -0.025 : 0.025, 0.55, -fDoorLen / 2);
+  fridgeDoorHinge.add(ledDisplayMesh);
+
+  // Inner Door Racks with Beverage/Condiment Bottles (attached to door so they rotate with it!)
+  const rackMat = new THREE.MeshPhysicalMaterial({ color: 0xffffff, transmission: 0.7, roughness: 0.2 });
+  [0.10, -0.30].forEach(ry => {
+    const dRack = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.09, fDoorLen - 0.10), rackMat);
+    dRack.position.set(isCarportLeft ? 0.05 : -0.05, ry, -fDoorLen / 2);
+    fridgeDoorHinge.add(dRack);
+  });
+
+  const fridgeController = {
+    id: "fridge_door",
+    isOpen: false,
+    progress: 0,
+    toggle() {
+      this.isOpen = !this.isOpen;
+      audio.playFridge(this.isOpen);
+    },
+    getPromptText() {
+      return this.isOpen ? "Close Refrigerator" : "Open Refrigerator";
+    },
+    update(delta) {
+      this.progress = THREE.MathUtils.damp(this.progress, this.isOpen ? 1 : 0, 8.5, delta);
+      // When opening: handle swings from local -Z towards -X into the room!
+      // In Three.js: rotating by +Math.PI/2 moves (0, 0, -0.68) to (-0.68, 0, 0)
+      const openAngle = isCarportLeft ? (Math.PI / 2 + 0.15) : (-Math.PI / 2 - 0.15);
+      fridgeDoorHinge.rotation.y = this.progress * openAngle;
+      fridgeInteriorLight.intensity = this.progress * 2.2;
+    }
+  };
+
+  registerInteractable(fridgeDoorMesh, fridgeController);
+  registerInteractable(fridgeHandleMesh, fridgeController);
 
   // =========================================================================
-  // 3. COLLIDERS (Accurate walk-mode collision bounding boxes)
+  // 6. COLLIDERS
   // =========================================================================
   if (colliders && Array.isArray(colliders)) {
-    // Short Wall Counter collider (X in [0.30, 2.50], Z in [-1.15, -0.55])
     const shortBox = new THREE.Box3();
     const sMinX = Math.min(mx(0.30), mx(2.50));
     const sMaxX = Math.max(mx(0.30), mx(2.50));
@@ -1124,7 +1228,6 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     shortBox.max.set(sMaxX, 2.35, facingWallZ + counterDepth + 0.04);
     colliders.push(shortBox);
 
-    // Long Wall Counter collider (Z in [-0.55, 1.25])
     const longBox = new THREE.Box3();
     const lMinX = Math.min(mx(longWallX - counterDepth), mx(longWallX));
     const lMaxX = Math.max(mx(longWallX - counterDepth), mx(longWallX));
@@ -1132,7 +1235,6 @@ export function buildKitchenSuite(scene, colliders, houseData) {
     longBox.max.set(lMaxX, 2.35, 1.25);
     colliders.push(longBox);
 
-    // Tall Cabinet & Fridge collider (Z in [1.25, 2.05])
     const fridgeBox = new THREE.Box3();
     const fMinX = Math.min(mx(longWallX - fridgeDepth), mx(longWallX));
     const fMaxX = Math.max(mx(longWallX - fridgeDepth), mx(longWallX));
